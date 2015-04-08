@@ -66,6 +66,10 @@
 #define LOWER_BORDER 22883
 #define HIGHER_BORDER 22885
 
+#define TRUE 1
+#define FALSE 0
+#define BOOL int
+
 char * stolower (char * line) {
 	char * p = line;
 	for ( ; *p; ++p) *p = tolower(*p);
@@ -260,19 +264,47 @@ void output_data (FILE * output, char * field_value, char * delimiter) {
 	fprintf(output, "}");
 }
 
-int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count) {
+void output_flat_data (FILE * output, char * field_value, char * delimiter, int entry_number) {
+	char tokens[LINE_LENGTH];
+	strcpy(tokens, field_value);
+	char * token = strtok(tokens, delimiter);
+	
+	// Output the Julian Date
+	fprintf(output, "\"data_jd%d\":\"%s\"", entry_number, token);
+	token = strtok(NULL, delimiter);
+
+	// Output the magnitude
+	fprintf(output, ",\"data_mag%d\":%s", entry_number, token);
+	token = strtok(NULL, delimiter);
+	
+	// Output the magnitude error, if present
+	if (token) {
+		fprintf(output, ",\"data_magerr%d\":%s", entry_number, token);
+		token = strtok(NULL, delimiter);
+	}
+	
+	// Output the air mass, if present
+	if (token) {
+		fprintf(output, ",\"data_airmass%d\":%s", entry_number, token);
+	}
+}
+
+int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, int * old_count) {
 	FILE * input = NULL;
 	char buf[LINE_LENGTH], field_name[LINE_LENGTH], field_value[LINE_LENGTH], * delimiter;
-	int field_code = WRONG_FIELD, old_field_code = WRONG_FIELD;
+	int field_code = WRONG_FIELD, old_field_code = WRONG_FIELD, doc_count = old_doc_count, data_count = 1;
+	
+	// count is an amount of observations with amount of points within the low-high corridor
+	int low = 26, high = 1024, count = (* old_count);
 	size_t ln;
-	int doc_count = old_doc_count;
+	BOOL nested_mode = FALSE;
 
 	input = fopen(next_file_path, "r");
 	
 	if (!input) {
 		printf("INPUT FILE ERROR! Path: %s\n", next_file_path);
 		getchar();
-		return 1;
+		return TRUE;
 	}
 
 	while (fgets(buf, LINE_LENGTH, input) != NULL) {
@@ -385,7 +417,12 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count) 
 				// DATA VALUES
 				case DATA:
 					// Check the delimiter
-					output_data(output, field_value, delimiter);
+					if (nested_mode) {
+						output_data(output, field_value, delimiter);
+					} else {
+						output_flat_data(output, field_value, delimiter, data_count);
+						data_count ++;
+					}
 					break;
 				case DELIMITER:
 					// Save the delimiter
@@ -398,15 +435,33 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count) 
 
 				// EXTREME CHARACTERS
 				case STARTMETADATA:
-					fprintf(output, "{\"metadata\":{");
+					fprintf(output, "{");
+					
+					if (nested_mode) {
+						fprintf(output, "\"metadata\":{");
+					}
 					break;
 				case ENDMETADATA:
 					// Print the X-objects (comp-objects)
-					fprintf(output, "},\"data\":[");
+					if (nested_mode) {
+						fprintf(output, "},\"data\":[");
+					} else {
+						fprintf(output, ",");
+						if (low < data_count && data_count < high) {
+							count ++;
+							printf ("data_count: %d, count: %d\n", data_count, count);
+						}
+						data_count = 1;
+					}
 					break;
 				case ENDDATA:
-					// Close the data array as well!
-					fprintf(output, "]}");
+				
+					if (nested_mode) {
+						fprintf(output, "]");
+					}
+					
+					fprintf(output, "}");
+					
 					break;
 
 				default: break;
@@ -418,13 +473,15 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count) 
 
 		if (field_code == ENDDATA) {
 			doc_count ++;
-			printf("doc_count: %d\n", doc_count);
+//			printf("doc_count: %d\n", doc_count);
 		}
 	}
 	
 	fclose(input);
 	input = NULL;
 	
+	// Return the required size elements count
+	(* old_count) = count;
 	return doc_count;
 }
 
@@ -432,7 +489,12 @@ int write_alcdefs_to_json (const char * from, const char * to)
 {
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
-	int doc_count = 0;
+	
+	// elder_count describes the corridorable observations amount after previous asteroid
+	int doc_count = 0, * corridor_size_count, elder_count = 0, corridor_asteroids_count = 0;
+	
+	corridor_size_count = (int *)malloc(sizeof(int));
+	*corridor_size_count = 0;
 	
 	FILE * output = NULL;
 	int first_file = 1, counter = 0;
@@ -441,7 +503,7 @@ int write_alcdefs_to_json (const char * from, const char * to)
 	
 	if (!output) {
 		printf("OUTPUT FILE ERROR\n");
-		return 1;
+		return TRUE;
 	}
 
     char sPath[FILE_NAME_LENGTH];
@@ -454,7 +516,7 @@ int write_alcdefs_to_json (const char * from, const char * to)
 	// Check if path is valid
     if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
         printf("Path not found: [%s]\n", from);
-        return 1;
+        return TRUE;
     }
 
 	// OPEN JSON ARRAY
@@ -493,8 +555,13 @@ int write_alcdefs_to_json (const char * from, const char * to)
 #ifdef TEST
 	}
 #endif
-				doc_count = alcdef2json(sPath, output, doc_count);
+				elder_count = * corridor_size_count;
+				doc_count = alcdef2json(sPath, output, doc_count, corridor_size_count);
 				
+				if (elder_count < (* corridor_size_count)) {
+					corridor_asteroids_count ++;
+					printf("corridor_asteroids_count: %d\n", corridor_asteroids_count);
+				}
             }
         }
     } while (FindNextFile(hFind, &fdFile)); //Find the next file.
@@ -507,11 +574,11 @@ int write_alcdefs_to_json (const char * from, const char * to)
 	fclose(output);
 	output = NULL;
 	
-    return 0;
+    return FALSE;
 }
 
 int main() {
 	write_alcdefs_to_json("C://alcdef2json/alcdef", "C://alcdef2json/json/alcdefs.json");
 
-	return 0;
+	return FALSE;
 }
