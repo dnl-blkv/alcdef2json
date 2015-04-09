@@ -1,75 +1,30 @@
+// Include the required libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <windows.h>
 
-// Line length
-#define LINE_LENGTH 512
-#define FILE_NAME_LENGTH 4096
+// Include the local ALCDEF library
+#include "alcdef.h"
 
-// Locations
-#define NO_BLOCK 0
-#define METADATA_BLOCK 1
-#define DATA_BLOCK 2
-
-// Commands
-#define WRONG_FIELD -1
-#define BIBCODE 0
-#define CIBAND 1
-#define CICORRECTION 2
-#define CITARGET 3
-#define COMMENT 4
-	  
-// {X} commands
-#define COMPCI 5
-#define COMPDEC 6
-#define COMPNAME 7
-#define COMPMAG 8
-#define COMPRA 9
-// end {x} commands
-
-#define CONTACTINFO 10
-#define CONTACTNAME 11
-#define DATA 12
-#define DELIMITER 13
-#define DIFFERMAGS 14
-#define ENDDATA 15
-#define ENDMETADATA 16
-#define FILTER 17
-#define LTCAPP 18
-#define LTCDAYS 19
-#define LTCTYPE 20
-#define MAGADJUST 21
-#define MAGBAND 22
-#define MPCDESIG 23
-#define OBJECTDEC 24
-#define OBJECTNAME 25
-#define OBJECTNUMBER 26
-#define OBJECTRA 27
-#define OBSERVERS 28
-#define OBSLATITUDE 29
-#define OBSLONGITUDE 30
-#define PABB 31
-#define PABL 32
-#define PHASE 33
-#define PUBLICATION 34
-#define REDUCEDMAGS 35
-#define REVISEDDATA 36
-#define SESSIONDATE 37
-#define SESSIONTIME 38
-#define STANDARD 39
-#define STARTMETADATA 40
-#define UCORMAG 41
-
+// Define testing parameters
 //#define TEST
 #define LOWER_BORDER 22883
 #define HIGHER_BORDER 22885
 
-#define TRUE 1
-#define FALSE 0
-#define BOOL int
+// Define the ALCDEF FIELD data structure
+typedef struct s_alcdef_field {
+	int code;
+	char name[LINE_LENGTH];
+	char value[LINE_LENGTH];
+} alcdef_field;
 
+// Define utils
+// Define boolean data structure for convenience
+typedef enum { false, true } bool;
+
+// Define method for string conversion to lower case characters
 char * stolower (char * line) {
 	char * p = line;
 	for ( ; *p; ++p) *p = tolower(*p);
@@ -77,6 +32,7 @@ char * stolower (char * line) {
 	return line;
 }
 
+// Define method for string escaping
 int escape_str (char * str) {
 	char buffer[LINE_LENGTH];
 	int i = 0, n = 0;
@@ -100,24 +56,7 @@ int escape_str (char * str) {
 	return 0;
 }
 
-int get_field_data (char line[], char * name, char * value) {
-	char * delimiter_pointer = strchr(line, '=');
-	int name_length = (delimiter_pointer - line);
-	
-	// Clean the buffers
-	memset(name, 0, strlen(name));
-	memset(value, 0, strlen(value));
-	
-	if (delimiter_pointer != NULL) {
-		strncpy(name, line, name_length);
-		strcpy(value, delimiter_pointer + 1);
-	} else {
-		strcpy(name, line);
-		strcpy(value, "");
-	}
-	
-	stolower(name);
-	
+int get_field_code (char line[]) {
 	int field_code = WRONG_FIELD;
 	  
 	if (strstr(line, "BIBCODE") == line) {
@@ -205,8 +144,49 @@ int get_field_data (char line[], char * name, char * value) {
 	} else if (strstr(line, "UCORMAG") == line) {
 		field_code = UCORMAG;
 	}
-
+	
 	return field_code;
+}
+
+// Define method for fetching a field data
+alcdef_field get_field_data (char line[]) {
+	
+	// Define the pointer to the name-value delimiter
+	char * delimiter_pointer = strchr(line, '=');
+	
+	// Calculate the field name length
+	int name_length = (delimiter_pointer - line);
+	
+	// Create the new field data structure
+	alcdef_field field;
+	
+	// Reset the field's values
+	memset(field.value, 0, strlen(field.value));
+	memset(field.name, 0, strlen(field.name));
+	
+	// Save the field name and value
+	// If there is a delimiter, save field name and value
+	if (delimiter_pointer != NULL) {
+		strncpy(field.name, line, name_length);
+		strcpy(field.value, delimiter_pointer + 1);
+	// Otherwise, save name and set value to an empty line
+	} else {
+		strcpy(field.name, line);
+		strcpy(field.value, "");
+	}
+	
+	// Save the field code
+	field.code = get_field_code(line);
+	
+	// TODO: Probably move outside the method?
+	// Process te field name and value for JSON
+	// Bring the field name to lower case
+	stolower(field.name);
+	
+	// Escape the field value for further processing
+	escape_str(field.value);
+
+	return field;
 }
 
 int field_has_value (int field_code) {
@@ -216,30 +196,30 @@ int field_has_value (int field_code) {
 	(field_code != ENDDATA);
 }
 
-int output_boolean (FILE * output, char * field_name, char * field_value) {
-	return fprintf(output, "\"%s\":%s", field_name, stolower(field_value));
+int output_boolean (FILE * output, alcdef_field field) {
+	return fprintf(output, "\"%s\":%s", field.name, stolower(field.value));
 }
 
-int output_string (FILE * output, char * field_name, char * field_value) {
-	return fprintf(output, "\"%s\":\"%s\"", field_name, field_value);
+int output_string (FILE * output, alcdef_field field) {
+	return fprintf(output, "\"%s\":\"%s\"", field.name, field.value);
 }
 
-int output_integer (FILE * output, char * field_name, char * field_value) {
-	return fprintf(output, "\"%s\":%s", field_name, field_value);
+int output_integer (FILE * output, alcdef_field field) {
+	return fprintf(output, "\"%s\":%s", field.name, field.value);
 }
 
-int output_double (FILE * output, char * field_name, char * field_value) {
+int output_double (FILE * output, alcdef_field field) {
 	
-	if (strlen(field_value) == 0) {
-		strcpy(field_value, "null");
+	if (strlen(field.value) == 0) {
+		strcpy(field.value, "null");
 	}
 	
-	return fprintf(output, "\"%s\":%s", field_name, field_value);
+	return fprintf(output, "\"%s\":%s", field.name, field.value);
 }
 
-void output_data (FILE * output, char * field_value, char * delimiter) {
+void output_data (FILE * output, alcdef_field field, char * delimiter) {
 	char tokens[LINE_LENGTH];
-	strcpy(tokens, field_value);
+	strcpy(tokens, field.value);
 	char * token = strtok(tokens, delimiter);
 	
 	// Output the Julian Date
@@ -264,9 +244,9 @@ void output_data (FILE * output, char * field_value, char * delimiter) {
 	fprintf(output, "}");
 }
 
-void output_flat_data (FILE * output, char * field_value, char * delimiter, int entry_number) {
+void output_flat_data (FILE * output, alcdef_field field, char * delimiter, int entry_number) {
 	char tokens[LINE_LENGTH];
-	strcpy(tokens, field_value);
+	strcpy(tokens, field.value);
 	char * token = strtok(tokens, delimiter);
 	
 	// Output the Julian Date
@@ -291,27 +271,29 @@ void output_flat_data (FILE * output, char * field_value, char * delimiter, int 
 
 int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, int * old_count) {
 	FILE * input = NULL;
-	char buf[LINE_LENGTH], field_name[LINE_LENGTH], field_value[LINE_LENGTH], * delimiter;
-	int field_code = WRONG_FIELD, old_field_code = WRONG_FIELD, doc_count = old_doc_count, data_count = 1;
+	char buf[LINE_LENGTH], * delimiter;
+	int old_field_code = WRONG_FIELD, doc_count = old_doc_count, data_count = 1;
+	alcdef_field field;
+	field.code = WRONG_FIELD;
+	size_t ln;
+	bool nested_mode = false;
 	
 	// count is an amount of observations with amount of points within the low-high corridor
 	int low = 26, high = 1024, count = (* old_count);
-	size_t ln;
-	BOOL nested_mode = FALSE;
-
+	
 	input = fopen(next_file_path, "r");
 	
 	if (!input) {
 		printf("INPUT FILE ERROR! Path: %s\n", next_file_path);
 		getchar();
-		return TRUE;
+		return true;
 	}
 
 	while (fgets(buf, LINE_LENGTH, input) != NULL) {
-	
-		// Save the old field code
-		old_field_code = field_code;
 		
+		// Save the old field code
+		old_field_code = field.code;
+
 		ln = strlen(buf) - 1;
 		
 		if (buf[ln] == '\n') {
@@ -319,31 +301,33 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 		}
 		
 		// Get the field code
-		field_code = get_field_data(buf, field_name, field_value);
+		field = get_field_data(buf);
+
 #ifdef TEST		
 	if (LOWER_BORDER <= doc_count && doc_count < HIGHER_BORDER) {
-#endif			
-			if (((field_has_value(field_code) && 
+#else
+//	if (last_data_count >= data_count_threshold) {
+#endif	
+			if (((field_has_value(field.code) && 
 				field_has_value(old_field_code)) ||
 				((old_field_code == ENDDATA) && 
-				(field_code == STARTMETADATA))) &&
-				(field_code != DELIMITER)) {
+				(field.code == STARTMETADATA))) &&
+				(field.code != DELIMITER)) {
 				fprintf(output, ",");
 			}
 			
 			if ((old_field_code == ENDDATA) && 
-				(field_code == STARTMETADATA)) {
+				(field.code == STARTMETADATA)) {
 				fprintf(output, "\n");
 			}
 			
-			escape_str(field_value);
-			
 			// Process the field
-			switch (field_code) {
+			switch (field.code) {
 				
 				// String case
 				case BIBCODE:
 				case CIBAND:
+				case COMMENT:
 				case CONTACTINFO:
 				case CONTACTNAME:
 				case FILTER:
@@ -360,18 +344,14 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 				case SESSIONDATE:
 				case SESSIONTIME:
 				case STANDARD:
-					output_string(output, field_name, field_value);
-					break;
-					
-				case COMMENT:
-					output_string(output, field_name, field_value);
+					output_string(output, field);
 					break;
 					
 				// Boolean case
 				case CICORRECTION:
 				case DIFFERMAGS:
 				case REVISEDDATA:
-					output_boolean(output, field_name, field_value);
+					output_boolean(output, field);
 					break;
 					
 				// Double case
@@ -384,49 +364,49 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 				case PABL:
 				case PHASE:
 				case UCORMAG:
-					output_double(output, field_name, field_value);
+					output_double(output, field);
 					break;
 					
 				// Integer case
 				case OBJECTNUMBER:
-					output_integer(output, field_name, field_value);
+					output_integer(output, field);
 					break;
 					
 				// START X - VALUES
 				case COMPCI:
 					// Put to COMPCI object, output on ENDMETADATA
-					output_double(output, field_name, field_value);
+					output_double(output, field);
 					break;
 				case COMPDEC:
 					// Put to COMPDEC object, output on ENDMETADATA
-					output_string(output, field_name, field_value);
+					output_string(output, field);
 					break;
 				case COMPMAG:
 					// Put to COMPMAG object, output on ENDMETADATA
-					output_double(output, field_name, field_value);
+					output_double(output, field);
 					break;
 				case COMPNAME:
 					// Put to COMPNAME object, output on ENDMETADATA
-					output_string(output, field_name, field_value);
+					output_string(output, field);
 					break;
 				case COMPRA:
 					// Put to COMPRA object, output on ENDMETADATA
-					output_string(output, field_name, field_value);
+					output_string(output, field);
 					break;
 
 				// DATA VALUES
 				case DATA:
 					// Check the delimiter
 					if (nested_mode) {
-						output_data(output, field_value, delimiter);
+						output_data(output, field, delimiter);
 					} else {
-						output_flat_data(output, field_value, delimiter, data_count);
+						output_flat_data(output, field, delimiter, data_count);
 						data_count ++;
 					}
 					break;
 				case DELIMITER:
 					// Save the delimiter
-					if (strstr(field_value, "TAB")) {
+					if (strstr(field.value, "TAB")) {
 						delimiter = "\t";
 					} else {
 						delimiter = "|";
@@ -471,7 +451,7 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 	}
 #endif
 
-		if (field_code == ENDDATA) {
+		if (field.code == ENDDATA) {
 			doc_count ++;
 //			printf("doc_count: %d\n", doc_count);
 		}
@@ -485,7 +465,7 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 	return doc_count;
 }
 
-int write_alcdefs_to_json (const char * from, const char * to)
+bool write_alcdefs_to_json (const char * from, const char * to)
 {
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
@@ -503,7 +483,7 @@ int write_alcdefs_to_json (const char * from, const char * to)
 	
 	if (!output) {
 		printf("OUTPUT FILE ERROR\n");
-		return TRUE;
+		return true;
 	}
 
     char sPath[FILE_NAME_LENGTH];
@@ -516,7 +496,7 @@ int write_alcdefs_to_json (const char * from, const char * to)
 	// Check if path is valid
     if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
         printf("Path not found: [%s]\n", from);
-        return TRUE;
+        return true;
     }
 
 	// OPEN JSON ARRAY
@@ -574,11 +554,11 @@ int write_alcdefs_to_json (const char * from, const char * to)
 	fclose(output);
 	output = NULL;
 	
-    return FALSE;
+    return false;
 }
 
 int main() {
 	write_alcdefs_to_json("C://alcdef2json/alcdef", "C://alcdef2json/json/alcdefs.json");
 
-	return FALSE;
+	return false;
 }
