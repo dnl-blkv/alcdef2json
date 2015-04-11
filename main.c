@@ -10,8 +10,28 @@
 
 // Define testing parameters
 //#define TEST
-#define LOWER_BORDER 22883
-#define HIGHER_BORDER 22885
+#define LOWER_BORDER 1
+#define HIGHER_BORDER 14
+#define REPORT_LOW 26
+#define REPORT_HIGH 1024
+
+// TODO: Probably make user-definable?
+#define NESTED_MODE true
+
+// Define the statistical data structure
+typedef struct s_statistics {
+	// Total number of documents
+	int total_doc_count;
+	
+	// Number of processed documents
+	int doc_count;
+	
+	// Total number of observations
+	int total_obs_count;
+	
+	// Number of processed observations
+	int obs_count;
+} statistics;
 
 // Define the ALCDEF FIELD data structure
 typedef struct s_alcdef_field {
@@ -148,6 +168,18 @@ int get_field_code (char line[]) {
 	return field_code;
 }
 
+// Prepare a field for json
+bool prepare_for_json (alcdef_field * field_pointer) {
+
+	// Bring the field name to lower case
+	stolower(field_pointer -> name);
+	
+	// Escape the field value for further processing
+	escape_str(field_pointer -> value);
+	
+	return false;
+}
+
 // Define method for fetching a field data
 alcdef_field get_field_data (char line[]) {
 	
@@ -159,10 +191,10 @@ alcdef_field get_field_data (char line[]) {
 	
 	// Create the new field data structure
 	alcdef_field field;
-	
+
 	// Reset the field's values
-	memset(field.value, 0, strlen(field.value));
-	memset(field.name, 0, strlen(field.name));
+	memset(field.name, 0, LINE_LENGTH);
+	memset(field.value, 0, LINE_LENGTH);
 	
 	// Save the field name and value
 	// If there is a delimiter, save field name and value
@@ -179,21 +211,21 @@ alcdef_field get_field_data (char line[]) {
 	field.code = get_field_code(line);
 	
 	// TODO: Probably move outside the method?
-	// Process te field name and value for JSON
-	// Bring the field name to lower case
-	stolower(field.name);
-	
-	// Escape the field value for further processing
-	escape_str(field.value);
+	// Prepare for JSON
+	prepare_for_json(&field);
 
 	return field;
 }
 
 int field_has_value (int field_code) {
-	return (field_code != WRONG_FIELD) && 
+	return ((field_code != WRONG_FIELD) && 
 	(field_code != STARTMETADATA) &&
 	(field_code != ENDMETADATA) &&
-	(field_code != ENDDATA);
+	(field_code != ENDDATA));
+}
+
+int field_has_printable_value (int field_code) {
+	return (field_has_value(field_code) && (field_code != DELIMITER));
 }
 
 int output_boolean (FILE * output, alcdef_field field) {
@@ -223,7 +255,7 @@ void output_data (FILE * output, alcdef_field field, char * delimiter) {
 	char * token = strtok(tokens, delimiter);
 	
 	// Output the Julian Date
-	fprintf(output, "{\"jd\":\"%s\"", token);
+	fprintf(output, "{\"jd\":%s", token);
 	token = strtok(NULL, delimiter);
 
 	// Output the magnitude
@@ -250,75 +282,85 @@ void output_flat_data (FILE * output, alcdef_field field, char * delimiter, int 
 	char * token = strtok(tokens, delimiter);
 	
 	// Output the Julian Date
-	fprintf(output, "\"data_jd%d\":\"%s\"", entry_number, token);
+	fprintf(output, "\"jd%d\":%s", entry_number, token);
 	token = strtok(NULL, delimiter);
 
 	// Output the magnitude
-	fprintf(output, ",\"data_mag%d\":%s", entry_number, token);
+	fprintf(output, ",\"mag%d\":%s", entry_number, token);
 	token = strtok(NULL, delimiter);
 	
 	// Output the magnitude error, if present
 	if (token) {
-		fprintf(output, ",\"data_magerr%d\":%s", entry_number, token);
+		fprintf(output, ",\"magerr%d\":%s", entry_number, token);
 		token = strtok(NULL, delimiter);
 	}
 	
 	// Output the air mass, if present
 	if (token) {
-		fprintf(output, ",\"data_airmass%d\":%s", entry_number, token);
+		fprintf(output, ",\"airmass%d\":%s", entry_number, token);
 	}
 }
 
-int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, int * old_count) {
-	FILE * input = NULL;
-	char buf[LINE_LENGTH], * delimiter;
-	int old_field_code = WRONG_FIELD, doc_count = old_doc_count, data_count = 1;
-	alcdef_field field;
-	field.code = WRONG_FIELD;
-	size_t ln;
-	bool nested_mode = false;
+// Convert a single ALCDEF file to JSON
+statistics alcdef2json (const char * file_path, FILE * output, statistics stats) {
 	
-	// count is an amount of observations with amount of points within the low-high corridor
-	int low = 26, high = 1024, count = (* old_count);
+	// Open the file
+	FILE * input = fopen(file_path, "r");
 	
-	input = fopen(next_file_path, "r");
-	
+	// If the next file was failed to open, report error
 	if (!input) {
-		printf("INPUT FILE ERROR! Path: %s\n", next_file_path);
+		printf("INPUT FILE ERROR! Path: %s\n", file_path);
 		getchar();
-		return true;
+		return stats;
 	}
 
-	while (fgets(buf, LINE_LENGTH, input) != NULL) {
+	// Define the old field code and data fields counter
+	int old_field_code = WRONG_FIELD, data_count = 1;
+	
+
+	
+	// Create the field buffer
+	alcdef_field field;
+	field.code = WRONG_FIELD;
+
+	// Define the line buffer and delimiter variable
+	char line[LINE_LENGTH], * delimiter;
+
+	// Variable to store the last index in the line
+	size_t last_line_index;
+
+	// Read the input file line by line to the line buffer
+	while (fgets(line, LINE_LENGTH, input) != NULL) {
+		
+		// Save the last line index
+		last_line_index = strlen(line) - 1;
+		
+		// If the line ends with newline, replace with \0
+		if (line[last_line_index] == '\n') {
+			line[last_line_index] = '\0';
+		}
 		
 		// Save the old field code
 		old_field_code = field.code;
-
-		ln = strlen(buf) - 1;
-		
-		if (buf[ln] == '\n') {
-			buf[ln] = '\0';
-		}
 		
 		// Get the field code
-		field = get_field_data(buf);
-
+		field = get_field_data(line);
 #ifdef TEST		
-	if (LOWER_BORDER <= doc_count && doc_count < HIGHER_BORDER) {
-#else
-//	if (last_data_count >= data_count_threshold) {
+	if (LOWER_BORDER <= stats.total_obs_count && stats.total_obs_count < HIGHER_BORDER) {
 #endif	
-			if (((field_has_value(field.code) && 
-				field_has_value(old_field_code)) ||
-				((old_field_code == ENDDATA) && 
-				(field.code == STARTMETADATA))) &&
-				(field.code != DELIMITER)) {
+			if (field_has_printable_value(field.code) && field_has_value(old_field_code)) {
 				fprintf(output, ",");
 			}
 			
 			if ((old_field_code == ENDDATA) && 
 				(field.code == STARTMETADATA)) {
-				fprintf(output, "\n");
+#ifdef TEST		
+	if (LOWER_BORDER < stats.total_obs_count) {
+#endif	
+				fprintf(output, ",\n");
+#ifdef TEST
+	}
+#endif
 			}
 			
 			// Process the field
@@ -373,36 +415,33 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 					break;
 					
 				// START X - VALUES
+				// Nested Case: Put to arrays, output on ENDMETADATA
 				case COMPCI:
-					// Put to COMPCI object, output on ENDMETADATA
 					output_double(output, field);
 					break;
 				case COMPDEC:
-					// Put to COMPDEC object, output on ENDMETADATA
 					output_string(output, field);
 					break;
 				case COMPMAG:
-					// Put to COMPMAG object, output on ENDMETADATA
 					output_double(output, field);
 					break;
 				case COMPNAME:
-					// Put to COMPNAME object, output on ENDMETADATA
 					output_string(output, field);
 					break;
 				case COMPRA:
-					// Put to COMPRA object, output on ENDMETADATA
 					output_string(output, field);
 					break;
 
 				// DATA VALUES
 				case DATA:
 					// Check the delimiter
-					if (nested_mode) {
+					if (NESTED_MODE) {
 						output_data(output, field, delimiter);
 					} else {
 						output_flat_data(output, field, delimiter, data_count);
-						data_count ++;
 					}
+					
+					data_count ++;
 					break;
 				case DELIMITER:
 					// Save the delimiter
@@ -417,30 +456,32 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 				case STARTMETADATA:
 					fprintf(output, "{");
 					
-					if (nested_mode) {
+					if (NESTED_MODE) {
 						fprintf(output, "\"metadata\":{");
 					}
 					break;
 				case ENDMETADATA:
-					// Print the X-objects (comp-objects)
-					if (nested_mode) {
+					
+					if (NESTED_MODE) {
+						// TODO: Print the X-arrays
 						fprintf(output, "},\"data\":[");
 					} else {
 						fprintf(output, ",");
-						if (low < data_count && data_count < high) {
-							count ++;
-							printf ("data_count: %d, count: %d\n", data_count, count);
-						}
-						data_count = 1;
 					}
+					
 					break;
 				case ENDDATA:
 				
-					if (nested_mode) {
+					if (NESTED_MODE) {
 						fprintf(output, "]");
+					} else if (REPORT_LOW < data_count && data_count < REPORT_HIGH) {
+						stats.obs_count ++;
+						printf ("data_count: %d, stats.obs_count: %d\n", data_count, stats.obs_count);
 					}
 					
 					fprintf(output, "}");
+					
+					data_count = 1;
 					
 					break;
 
@@ -451,18 +492,25 @@ int alcdef2json (const char * next_file_path, FILE * output, int old_doc_count, 
 	}
 #endif
 
+		// If the field was ENDDATA, increase the total observations counter
 		if (field.code == ENDDATA) {
-			doc_count ++;
-//			printf("doc_count: %d\n", doc_count);
+			stats.total_obs_count ++;
 		}
+#ifdef TEST
+	if (HIGHER_BORDER <= stats.total_obs_count) {
+		break;
+	}
+#endif
 	}
 	
+	// Close the input file
 	fclose(input);
 	input = NULL;
 	
-	// Return the required size elements count
-	(* old_count) = count;
-	return doc_count;
+	// Increase the total document counter
+	stats.total_doc_count ++;
+	
+	return stats;
 }
 
 bool write_alcdefs_to_json (const char * from, const char * to)
@@ -470,15 +518,18 @@ bool write_alcdefs_to_json (const char * from, const char * to)
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
 	
-	// elder_count describes the corridorable observations amount after previous asteroid
-	int doc_count = 0, * corridor_size_count, elder_count = 0, corridor_asteroids_count = 0;
-	
-	corridor_size_count = (int *)malloc(sizeof(int));
-	*corridor_size_count = 0;
-	
-	FILE * output = NULL;
-	int first_file = 1, counter = 0;
+	// Define the statistical structure
+	statistics stats;
+	stats.total_doc_count = 0;
+	stats.doc_count = 0;
+	stats.total_obs_count = 0;
+	stats.obs_count = 0;
 
+	int old_obs_count = 0;
+	bool first_file = true;
+	
+	// Define the output file
+	FILE * output = NULL;
 	output = fopen(to, "w");
 	
 	if (!output) {
@@ -509,10 +560,8 @@ bool write_alcdefs_to_json (const char * from, const char * to)
         if (strcmp(fdFile.cFileName, ".") != 0
                 && strcmp(fdFile.cFileName, "..") != 0)
         {
-            // Build up our file path using the passed in
-            // [sDir] and the file/foldername we just found:
-//			printf("#%d\n", counter);
-			counter ++;
+
+			// Generate the next file path
             sprintf(sPath, "%s/%s", from, fdFile.cFileName);
 
             // Is the entity a File or Folder?
@@ -524,24 +573,32 @@ bool write_alcdefs_to_json (const char * from, const char * to)
 				
 				// Write the next file to the target
 //                printf("Writing next file: %s\n", sPath);
+// With no upfront reading, precise result is not reachable
 #ifdef TEST
-	if (LOWER_BORDER <= doc_count && doc_count < HIGHER_BORDER) {
+	if (LOWER_BORDER <= stats.total_obs_count && stats.total_obs_count < HIGHER_BORDER) {
 #endif
-				if (!first_file) {
-					fprintf(output, ",\n");
+				if (first_file) {
+					first_file = false;
 				} else {
-					first_file = 0;
+					fprintf(output, ",\n");
 				}
 #ifdef TEST
 	}
 #endif
-				elder_count = * corridor_size_count;
-				doc_count = alcdef2json(sPath, output, doc_count, corridor_size_count);
+				old_obs_count = stats.obs_count;
+
+				stats = alcdef2json(sPath, output, stats);
 				
-				if (elder_count < (* corridor_size_count)) {
-					corridor_asteroids_count ++;
-					printf("corridor_asteroids_count: %d\n", corridor_asteroids_count);
+				if (old_obs_count < stats.obs_count) {
+					stats.doc_count ++;
+					printf("stats.doc_count: %d\n", stats.doc_count);
 				}
+				
+#ifdef TEST
+	if (HIGHER_BORDER <= stats.total_obs_count) {
+		break;
+	}
+#endif				
             }
         }
     } while (FindNextFile(hFind, &fdFile)); //Find the next file.
