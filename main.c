@@ -26,6 +26,7 @@ SOFTWARE. */
 #include <string.h>
 #include <ctype.h>
 #include <windows.h>
+#include <time.h>
 
 // Include the local ALCDEF library
 #include "alcdef.h"
@@ -36,9 +37,6 @@ SOFTWARE. */
 #define HIGHER_BORDER 14
 #define REPORT_LOW 26
 #define REPORT_HIGH 1024
-
-// TODO: Probably make user-definable?
-#define NESTED_MODE true
 
 // Define the statistical data structure
 typedef struct s_statistics {
@@ -84,6 +82,7 @@ int escape_str (char * str) {
 			sprintf(buffer + i + n, "\\%c", str[i]);
 			n ++;
 		} else if (str[i] == ',') {
+			// Temporal solution for dots, an alternative should be found
 			str[i] = '.';
 		} else {
 			sprintf(buffer + i + n, "%c", str[i]);
@@ -98,101 +97,106 @@ int escape_str (char * str) {
 	return 0;
 }
 
-int get_field_code (char line[]) {
+int get_field_code (char name[]) {
 	int field_code = WRONG_FIELD;
 	  
-	if (strstr(line, "BIBCODE") == line) {
+	if (strcmp(name, "BIBCODE") == 0) {
 		field_code = BIBCODE;
-	} else if (strstr(line, "CIBAND") == line) {
+	} else if (strcmp(name, "CIBAND") == 0) {
 		field_code = CIBAND;
-	} else if (strstr(line, "CICORRECTION") == line) {
+	} else if (strcmp(name, "CICORRECTION") == 0) {
 		field_code = CICORRECTION;
-	} else if (strstr(line, "CITARGET") == line) {
+	} else if (strcmp(name, "CITARGET") == 0) {
 		field_code = CITARGET;
-	} else if (strstr(line, "COMMENT") == line) {
+	} else if (strcmp(name, "COMMENT") == 0) {
 		field_code = COMMENT;
-	} else if (strstr(line, "COMPCI") == line) {
-		field_code = COMPCI;
-	} else if (strstr(line, "COMPDEC") == line) {
-		field_code = COMPDEC;
-	} else if (strstr(line, "COMPNAME") == line) {
-		field_code = COMPNAME;
-	} else if (strstr(line, "COMPMAG") == line) {
-		field_code = COMPMAG;
-	} else if (strstr(line, "COMPRA") == line) {
-		field_code = COMPRA;
-	} else if (strstr(line, "CONTACTINFO") == line) {
+	} else if (strcmp(name, "CONTACTINFO") == 0) {
 		field_code = CONTACTINFO;
-	} else if (strstr(line, "CONTACTNAME") == line) {
+	} else if (strcmp(name, "CONTACTNAME") == 0) {
 		field_code = CONTACTNAME;
-	} else if (strstr(line, "DATA") == line) {
+	} else if (strcmp(name, "DATA") == 0) {
 		field_code = DATA;
-	} else if (strstr(line, "DELIMITER") == line) {
+	} else if (strcmp(name, "DELIMITER") == 0) {
 		field_code = DELIMITER;
-	} else if (strstr(line, "DIFFERMAGS") == line) {
+	} else if (strcmp(name, "DIFFERMAGS") == 0) {
 		field_code = DIFFERMAGS;
-	} else if (strstr(line, "ENDDATA") == line) {
+	} else if (strcmp(name, "ENDDATA") == 0) {
 		field_code = ENDDATA;
-	} else if (strstr(line, "ENDMETADATA") == line) {
+	} else if (strcmp(name, "ENDMETADATA") == 0) {
 		field_code = ENDMETADATA;
-	} else if (strstr(line, "FILTER") == line) {
+	} else if (strcmp(name, "FILTER") == 0) {
 		field_code = FILTER;
-	} else if (strstr(line, "LTCAPP") == line) {
+	} else if (strcmp(name, "LTCAPP") == 0) {
 		field_code = LTCAPP;
-	} else if (strstr(line, "LTCDAYS") == line) {
+	} else if (strcmp(name, "LTCDAYS") == 0) {
 		field_code = LTCDAYS;
-	} else if (strstr(line, "LTCTYPE") == line) {
+	} else if (strcmp(name, "LTCTYPE") == 0) {
 		field_code = LTCTYPE;
-	} else if (strstr(line, "MAGADJUST") == line) {
+	} else if (strcmp(name, "MAGADJUST") == 0) {
 		field_code = MAGADJUST;
-	} else if (strstr(line, "MAGBAND") == line) {
+	} else if (strcmp(name, "MAGBAND") == 0) {
 		field_code = MAGBAND;
-	} else if (strstr(line, "MPCDESIG") == line) {
+	} else if (strcmp(name, "MPCDESIG") == 0) {
 		field_code = MPCDESIG;
-	} else if (strstr(line, "OBJECTDEC") == line) {
+	} else if (strcmp(name, "OBJECTDEC") == 0) {
 		field_code = OBJECTDEC;
-	} else if (strstr(line, "OBJECTNAME") == line) {
+	} else if (strcmp(name, "OBJECTNAME") == 0) {
 		field_code = OBJECTNAME;
-	} else if (strstr(line, "OBJECTNUMBER") == line) {
+	} else if (strcmp(name, "OBJECTNUMBER") == 0) {
 		field_code = OBJECTNUMBER;
-	} else if (strstr(line, "OBJECTRA") == line) {
+	} else if (strcmp(name, "OBJECTRA") == 0) {
 		field_code = OBJECTRA;
-	} else if (strstr(line, "OBSERVERS") == line) {
+	} else if (strcmp(name, "OBSERVERS") == 0) {
 		field_code = OBSERVERS;
-	} else if (strstr(line, "OBSLATITUDE") == line) {
+	} else if (strcmp(name, "OBSLATITUDE") == 0) {
 		field_code = OBSLATITUDE;
-	} else if (strstr(line, "OBSLONGITUDE") == line) {
+	} else if (strcmp(name, "OBSLONGITUDE") == 0) {
 		field_code = OBSLONGITUDE;
-	} else if (strstr(line, "PABB") == line) {
+	} else if (strcmp(name, "PABB") == 0) {
 		field_code = PABB;
-	} else if (strstr(line, "PABL") == line) {
+	} else if (strcmp(name, "PABL") == 0) {
 		field_code = PABL;
-	} else if (strstr(line, "PHASE") == line) {
+	} else if (strcmp(name, "PHASE") == 0) {
 		field_code = PHASE;
-	} else if (strstr(line, "PUBLICATION") == line) {
+	} else if (strcmp(name, "PUBLICATION") == 0) {
 		field_code = PUBLICATION;
-	} else if (strstr(line, "REDUCEDMAGS") == line) {
+	} else if (strcmp(name, "REDUCEDMAGS") == 0) {
 		field_code = REDUCEDMAGS;
-	} else if (strstr(line, "REVISEDDATA") == line) {
+	} else if (strcmp(name, "REVISEDDATA") == 0) {
 		field_code = REVISEDDATA;
-	} else if (strstr(line, "SESSIONDATE") == line) {
+	} else if (strcmp(name, "SESSIONDATE") == 0) {
 		field_code = SESSIONDATE;
-	} else if (strstr(line, "SESSIONTIME") == line) {
+	} else if (strcmp(name, "SESSIONTIME") == 0) {
 		field_code = SESSIONTIME;
-	} else if (strstr(line, "STANDARD") == line) {
+	} else if (strcmp(name, "STANDARD") == 0) {
 		field_code = STANDARD;
-	} else if (strstr(line, "STARTMETADATA") == line) {
+	} else if (strcmp(name, "STARTMETADATA") == 0) {
 		field_code = STARTMETADATA;
-	} else if (strstr(line, "UCORMAG") == line) {
+	} else if (strcmp(name, "UCORMAG") == 0) {
 		field_code = UCORMAG;
-	}
 	
+	// Start Numbered values
+	} else if (strstr(name, "COMPCI") == name) {
+		field_code = COMPCI;
+	} else if (strstr(name, "COMPDEC") == name) {
+		field_code = COMPDEC;
+	} else if (strstr(name, "COMPNAME") == name) {
+		field_code = COMPNAME;
+	} else if (strstr(name, "COMPMAG") == name) {
+		field_code = COMPMAG;
+	} else if (strstr(name, "COMPRA") == name) {
+		field_code = COMPRA;
+	}
+	// End numbered values
+	
+	if (field_code == -1) {
+		printf("WRONG FIELD NAME: %s\n", name);
+	}
 	return field_code;
 }
 
 // Prepare a field for json
 bool prepare_for_json (alcdef_field * field_pointer) {
-
 	// Bring the field name to lower case
 	stolower(field_pointer -> name);
 	
@@ -202,41 +206,46 @@ bool prepare_for_json (alcdef_field * field_pointer) {
 	return false;
 }
 
-// Define method for fetching a field data
-alcdef_field get_field_data (char line[]) {
+// Reset a field
+bool reset_field (alcdef_field * field_pointer) {
+	// Reset the field code
+	field_pointer -> code = 0;
 	
-	// Define the pointer to the name-value delimiter
-	char * delimiter_pointer = strchr(line, '=');
+	// Reset the field name and value
+	memset(field_pointer -> name, 0, LINE_LENGTH);
+	memset(field_pointer -> value, 0, LINE_LENGTH);
 	
-	// Calculate the field name length
-	int name_length = (delimiter_pointer - line);
-	
-	// Create the new field data structure
-	alcdef_field field;
+	return false;
+}
 
-	// Reset the field's values
-	memset(field.name, 0, LINE_LENGTH);
-	memset(field.value, 0, LINE_LENGTH);
+// Define method for fetching a field data
+alcdef_field * get_field_data (alcdef_field * field_pointer, char line[]) {
+
+	// Reset the field's member values
+	reset_field(field_pointer);
 	
-	// Save the field name and value
-	// If there is a delimiter, save field name and value
-	if (delimiter_pointer != NULL) {
-		strncpy(field.name, line, name_length);
-		strcpy(field.value, delimiter_pointer + 1);
-	// Otherwise, save name and set value to an empty line
-	} else {
-		strcpy(field.name, line);
-		strcpy(field.value, "");
+	// Get the token(s)
+	char * token = strtok(line, "=");
+
+	// Copy the name
+	strcpy(field_pointer -> name, token);
+	
+	// Get the next token
+	token = strtok(NULL, "=");
+	
+	// If token is present, copy it
+	if (token) {
+		strcpy(field_pointer -> value, token);
 	}
 	
 	// Save the field code
-	field.code = get_field_code(line);
+	field_pointer -> code = get_field_code(field_pointer -> name);
 	
-	// TODO: Probably move outside the method?
 	// Prepare for JSON
-	prepare_for_json(&field);
+	prepare_for_json(field_pointer);
 
-	return field;
+	// Return the field
+	return field_pointer;
 }
 
 int field_has_value (int field_code) {
@@ -324,7 +333,7 @@ void output_flat_data (FILE * output, alcdef_field field, char * delimiter, int 
 }
 
 // Convert a single ALCDEF file to JSON
-statistics alcdef2json (const char * file_path, FILE * output, statistics stats) {
+statistics alcdef2json (const char * file_path, FILE * output, statistics stats, bool nested_mode) {
 	
 	// Open the file
 	FILE * input = fopen(file_path, "r");
@@ -366,7 +375,7 @@ statistics alcdef2json (const char * file_path, FILE * output, statistics stats)
 		old_field_code = field.code;
 		
 		// Get the field code
-		field = get_field_data(line);
+		get_field_data(&field, line);
 #ifdef TEST		
 	if (LOWER_BORDER <= stats.total_obs_count && stats.total_obs_count < HIGHER_BORDER) {
 #endif	
@@ -457,7 +466,7 @@ statistics alcdef2json (const char * file_path, FILE * output, statistics stats)
 				// DATA VALUES
 				case DATA:
 					// Check the delimiter
-					if (NESTED_MODE) {
+					if (nested_mode) {
 						output_data(output, field, delimiter);
 					} else {
 						output_flat_data(output, field, delimiter, data_count);
@@ -478,13 +487,13 @@ statistics alcdef2json (const char * file_path, FILE * output, statistics stats)
 				case STARTMETADATA:
 					fprintf(output, "{");
 					
-					if (NESTED_MODE) {
+					if (nested_mode) {
 						fprintf(output, "\"metadata\":{");
 					}
 					break;
 				case ENDMETADATA:
 					
-					if (NESTED_MODE) {
+					if (nested_mode) {
 						// TODO: Print the X-arrays
 						fprintf(output, "},\"data\":[");
 					} else {
@@ -494,7 +503,7 @@ statistics alcdef2json (const char * file_path, FILE * output, statistics stats)
 					break;
 				case ENDDATA:
 				
-					if (NESTED_MODE) {
+					if (nested_mode) {
 						fprintf(output, "]");
 					} else if (REPORT_LOW < data_count && data_count < REPORT_HIGH) {
 						stats.obs_count ++;
@@ -535,7 +544,7 @@ statistics alcdef2json (const char * file_path, FILE * output, statistics stats)
 	return stats;
 }
 
-bool write_alcdefs_to_json (const char * from, const char * to)
+bool write_alcdefs_to_json (const char * from, const char * to, bool nested_mode)
 {
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
@@ -609,7 +618,7 @@ bool write_alcdefs_to_json (const char * from, const char * to)
 #endif
 				old_obs_count = stats.obs_count;
 
-				stats = alcdef2json(sPath, output, stats);
+				stats = alcdef2json(sPath, output, stats, nested_mode);
 				
 				if (old_obs_count < stats.obs_count) {
 					stats.doc_count ++;
@@ -636,8 +645,49 @@ bool write_alcdefs_to_json (const char * from, const char * to)
     return false;
 }
 
-int main() {
-	write_alcdefs_to_json("C://alcdef2json/alcdef", "C://alcdef2json/json/alcdefs.json");
-
+int main(int argc, char * argv[]) {
+	
+	// Save the execution starting time
+	unsigned long int start_time = (unsigned long)time(NULL);
+	
+	char input[LINE_LENGTH], output[LINE_LENGTH];
+	
+	int i = 0;
+	
+	bool nested_mode = true;
+	
+	// TODO:
+	// --fromFile
+	// --toDir
+	if (argc > 1) {
+		for (i = 1; i < argc; i ++) {
+			if (strcmp("--fromDir", argv[i]) == 0) {
+				// Save input directory path
+				if (i < (argc - 1)) {
+					strcpy(input, argv[i + 1]);
+				}
+			} else if (strcmp("--toFile", argv[i]) == 0) {
+				// Save output file path
+				if (i < (argc - 1)) {
+					strcpy(output, argv[i + 1]);
+				}
+			} else if (strcmp("--flatMode", argv[i]) == 0) {
+				// Save the output mode
+				nested_mode = false;
+			}
+		}
+	}
+	
+	// Use case: ALCDEF_to_JSON --fromDir C://alcdef2json/alcdef --toFile C://alcdef2json/json/alcdefs.json
+	// Add support to output mode
+	write_alcdefs_to_json(input, output, nested_mode);
+	
+	// Save the execution ending time
+	unsigned long int end_time = (unsigned long)time(NULL);
+	
+	// Output the time elapsed
+	printf("Time Elapsed: %lu seconds.\n", end_time - start_time);
+	
+	// Return false
 	return false;
 }

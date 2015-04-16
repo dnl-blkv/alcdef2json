@@ -2,12 +2,7 @@
 #define LINE_LENGTH 512
 #define FILE_NAME_LENGTH 4096
 
-// Locations
-#define NO_BLOCK 0
-#define METADATA_BLOCK 1
-#define DATA_BLOCK 2
-
-// Commands
+// Fields
 #define WRONG_FIELD -1
 #define BIBCODE 0
 #define CIBAND 1
@@ -15,13 +10,13 @@
 #define CITARGET 3
 #define COMMENT 4
 	  
-// {X} commands
+// {X} fields
 #define COMPCI 5
 #define COMPDEC 6
 #define COMPNAME 7
 #define COMPMAG 8
 #define COMPRA 9
-// end {x} commands
+// end {x} fields
 
 #define CONTACTINFO 10
 #define CONTACTNAME 11
