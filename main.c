@@ -348,8 +348,6 @@ statistics alcdef2json (const char * file_path, FILE * output, statistics stats,
 	// Define the old field code and data fields counter
 	int old_field_code = WRONG_FIELD, data_count = 1;
 	
-
-	
 	// Create the field buffer
 	alcdef_field field;
 	field.code = WRONG_FIELD;
