@@ -38,7 +38,7 @@ SOFTWARE. */
 #define REPORT_LOW 26
 #define REPORT_HIGH 1024
 
-// Define the statistical data structure
+// Declare the statistical data structure
 typedef struct s_statistics {
 	// Total number of documents
 	int total_doc_count;
@@ -53,16 +53,22 @@ typedef struct s_statistics {
 	int obs_count;
 } statistics;
 
-// Define the ALCDEF FIELD data structure
+// Define utils
+// Define boolean data structure for convenience
+typedef enum { false, true } bool;
+
+// Declare the ALCDEF FIELD data structure
 typedef struct s_alcdef_field {
 	int code;
 	char name[LINE_LENGTH];
 	char value[LINE_LENGTH];
 } alcdef_field;
 
-// Define utils
-// Define boolean data structure for convenience
-typedef enum { false, true } bool;
+// Declare the endpoint structure
+typedef struct endpoint {
+	char path[LINE_LENGTH];
+	bool isFile;
+} endpoint;
 
 // Define method for string conversion to lower case characters
 char * stolower (char * line) {
@@ -333,14 +339,14 @@ void output_flat_data (FILE * output, alcdef_field field, char * delimiter, int 
 }
 
 // Convert a single ALCDEF file to JSON
-statistics alcdef2json (const char * file_path, FILE * output, statistics stats, bool nested_mode) {
+statistics alcdef2json (const char * input_file_path, FILE * output, statistics stats, bool nested_mode) {
 	
 	// Open the file
-	FILE * input = fopen(file_path, "r");
+	FILE * input = fopen(input_file_path, "r");
 	
 	// If the next file was failed to open, report error
 	if (!input) {
-		printf("INPUT FILE ERROR! Path: %s\n", file_path);
+		printf("INPUT FILE ERROR! Path: %s\n", input_file_path);
 		getchar();
 		return stats;
 	}
@@ -542,7 +548,8 @@ statistics alcdef2json (const char * file_path, FILE * output, statistics stats,
 	return stats;
 }
 
-bool write_alcdefs_to_json (const char * from, const char * to, bool nested_mode)
+// Convert input data to required type output data
+bool convert_all (const char * from, const char * to, bool nested_mode)
 {
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
@@ -648,7 +655,7 @@ int main(int argc, char * argv[]) {
 	// Save the execution starting time
 	unsigned long int start_time = (unsigned long)time(NULL);
 	
-	char input[LINE_LENGTH], output[LINE_LENGTH];
+	endpoint input, output;
 	
 	int i = 0;
 	
@@ -662,12 +669,28 @@ int main(int argc, char * argv[]) {
 			if (strcmp("--fromDir", argv[i]) == 0) {
 				// Save input directory path
 				if (i < (argc - 1)) {
-					strcpy(input, argv[i + 1]);
+					strcpy(input.path, argv[i + 1]);
+					input.isFile = false;
+				}
+			} else if (strcmp("--fromFile", argv[i]) == 0) {
+				// TODO TODO TODO
+				// Save input directory path
+				if (i < (argc - 1)) {
+					strcpy(input.path, argv[i + 1]);
+					input.isFile = true;
+				}
+			} else if (strcmp("--toDir", argv[i]) == 0) {
+				// TODO TODO TODO
+				// Save output file path
+				if (i < (argc - 1)) {
+					strcpy(output.path, argv[i + 1]);
+					output.isFile = false;
 				}
 			} else if (strcmp("--toFile", argv[i]) == 0) {
 				// Save output file path
 				if (i < (argc - 1)) {
-					strcpy(output, argv[i + 1]);
+					strcpy(output.path, argv[i + 1]);
+					output.isFile = true;
 				}
 			} else if (strcmp("--flatMode", argv[i]) == 0) {
 				// Save the output mode
@@ -678,7 +701,7 @@ int main(int argc, char * argv[]) {
 	
 	// Use case: ALCDEF_to_JSON --fromDir C://alcdef2json/alcdef --toFile C://alcdef2json/json/alcdefs.json
 	// Add support to output mode
-	write_alcdefs_to_json(input, output, nested_mode);
+	convert_all(input.path, output.path, nested_mode);
 	
 	// Save the execution ending time
 	unsigned long int end_time = (unsigned long)time(NULL);
