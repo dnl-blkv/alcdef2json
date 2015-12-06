@@ -19,8 +19,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
-
-// Include the required libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,15 +26,28 @@ SOFTWARE. */
 #include <windows.h>
 #include <time.h>
 
-// Include the local ALCDEF library
-#include "alcdef.h"
-
 // Define testing parameters
 //#define TEST
 #define LOWER_BORDER 1
 #define HIGHER_BORDER 14
 #define REPORT_LOW 26
 #define REPORT_HIGH 1024
+
+// Line length
+#define LINE_LENGTH 512
+#define FILE_NAME_LENGTH 4096
+
+// Fields
+enum fields { WRONG_FIELD, BIBCODE, CIBAND, 
+CICORRECTION, CITARGET, COMMENT, COMPCI,
+COMPDEC, COMPNAME, COMPMAG, COMPRA, CONTACTINFO,
+CONTACTNAME, DATA, DELIMITER, DIFFERMAGS, 
+ENDDATA, ENDMETADATA, FILTER, LTCAPP, LTCDAYS,
+LTCTYPE, MAGADJUST, MAGBAND, MPCDESIG, OBJECTDEC,
+OBJECTNAME, OBJECTNUMBER, OBJECTRA, OBSERVERS,
+OBSLATITUDE, OBSLONGITUDE, PABB, PABL, PHASE,
+PUBLICATION, REDUCEDMAGS, REVISEDDATA, SESSIONDATE,
+SESSIONTIME, STANDARD, STARTMETADATA, UCORMAG };
 
 // Declare the statistical data structure
 typedef struct s_statistics {
@@ -65,20 +76,21 @@ typedef struct s_alcdef_field {
 } alcdef_field;
 
 // Declare the endpoint structure
+// For source and destinations points
 typedef struct endpoint {
 	char path[LINE_LENGTH];
 	bool isFile;
 } endpoint;
 
-// Define method for string conversion to lower case characters
+// Converts a string to lower characters
 char * stolower (char * line) {
 	char * p = line;
-	for ( ; *p; ++p) *p = tolower(*p);
+	for ( ; * p; ++ p) *p = tolower(*p);
 	
 	return line;
 }
 
-// Define method for string escaping
+// Escapes a string
 int escape_str (char * str) {
 	char buffer[LINE_LENGTH];
 	int i = 0, n = 0;
@@ -702,12 +714,9 @@ int main(int argc, char * argv[]) {
 	// Use case: ALCDEF_to_JSON --fromDir C://alcdef2json/alcdef --toFile C://alcdef2json/json/alcdefs.json
 	// Add support to output mode
 	convert_all(input.path, output.path, nested_mode);
-	
-	// Save the execution ending time
-	unsigned long int end_time = (unsigned long)time(NULL);
-	
-	// Output the time elapsed
-	printf("Time Elapsed: %lu seconds.\n", end_time - start_time);
+
+	// Output the time elapsed for the convertion
+	printf("Time Elapsed: %lu seconds.\n", (unsigned long)time(NULL) - start_time);
 	
 	// Return false
 	return false;
