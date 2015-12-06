@@ -26,13 +26,6 @@ SOFTWARE. */
 #include <windows.h>
 #include <time.h>
 
-// Define testing parameters
-//#define TEST
-#define LOWER_BORDER 1
-#define HIGHER_BORDER 14
-#define REPORT_LOW 26
-#define REPORT_HIGH 1024
-
 // Line length
 #define LINE_LENGTH 512
 #define FILE_NAME_LENGTH 4096
@@ -48,21 +41,6 @@ OBJECTNAME, OBJECTNUMBER, OBJECTRA, OBSERVERS,
 OBSLATITUDE, OBSLONGITUDE, PABB, PABL, PHASE,
 PUBLICATION, REDUCEDMAGS, REVISEDDATA, SESSIONDATE,
 SESSIONTIME, STANDARD, STARTMETADATA, UCORMAG };
-
-// Declare the statistical data structure
-typedef struct s_statistics {
-	// Total number of documents
-	int total_doc_count;
-	
-	// Number of processed documents
-	int doc_count;
-	
-	// Total number of observations
-	int total_obs_count;
-	
-	// Number of processed observations
-	int obs_count;
-} statistics;
 
 // Define utils
 // Define boolean data structure for convenience
@@ -351,7 +329,7 @@ void output_flat_data (FILE * output, alcdef_field field, char * delimiter, int 
 }
 
 // Convert a single ALCDEF file to JSON
-statistics alcdef2json (const char * input_file_path, FILE * output, statistics stats, bool nested_mode) {
+bool alcdef2json (const char * input_file_path, FILE * output, bool nested_mode) {
 	
 	// Open the file
 	FILE * input = fopen(input_file_path, "r");
@@ -360,7 +338,7 @@ statistics alcdef2json (const char * input_file_path, FILE * output, statistics 
 	if (!input) {
 		printf("INPUT FILE ERROR! Path: %s\n", input_file_path);
 		getchar();
-		return stats;
+		return true;
 	}
 
 	// Define the old field code and data fields counter
@@ -392,22 +370,15 @@ statistics alcdef2json (const char * input_file_path, FILE * output, statistics 
 		
 		// Get the field code
 		get_field_data(&field, line);
-#ifdef TEST		
-	if (LOWER_BORDER <= stats.total_obs_count && stats.total_obs_count < HIGHER_BORDER) {
-#endif	
+
 			if (field_has_printable_value(field.code) && field_has_value(old_field_code)) {
 				fprintf(output, ",");
 			}
 			
 			if ((old_field_code == ENDDATA) && 
 				(field.code == STARTMETADATA)) {
-#ifdef TEST		
-	if (LOWER_BORDER < stats.total_obs_count) {
-#endif	
+					
 				fprintf(output, ",\n");
-#ifdef TEST
-	}
-#endif
 			}
 			
 			// Process the field
@@ -521,9 +492,6 @@ statistics alcdef2json (const char * input_file_path, FILE * output, statistics 
 				
 					if (nested_mode) {
 						fprintf(output, "]");
-					} else if (REPORT_LOW < data_count && data_count < REPORT_HIGH) {
-						stats.obs_count ++;
-						printf ("data_count: %d, stats.obs_count: %d\n", data_count, stats.obs_count);
 					}
 					
 					fprintf(output, "}");
@@ -534,30 +502,13 @@ statistics alcdef2json (const char * input_file_path, FILE * output, statistics 
 
 				default: break;
 			}
-			
-#ifdef TEST
-	}
-#endif
-
-		// If the field was ENDDATA, increase the total observations counter
-		if (field.code == ENDDATA) {
-			stats.total_obs_count ++;
-		}
-#ifdef TEST
-	if (HIGHER_BORDER <= stats.total_obs_count) {
-		break;
-	}
-#endif
 	}
 	
 	// Close the input file
 	fclose(input);
 	input = NULL;
 	
-	// Increase the total document counter
-	stats.total_doc_count ++;
-	
-	return stats;
+	return false;
 }
 
 // Convert input data to required type output data
@@ -565,15 +516,7 @@ bool convert_all (const char * from, const char * to, bool nested_mode)
 {
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
-	
-	// Define the statistical structure
-	statistics stats;
-	stats.total_doc_count = 0;
-	stats.doc_count = 0;
-	stats.total_obs_count = 0;
-	stats.obs_count = 0;
 
-	int old_obs_count = 0;
 	bool first_file = true;
 	
 	// Define the output file
@@ -622,31 +565,14 @@ bool convert_all (const char * from, const char * to, bool nested_mode)
 				// Write the next file to the target
 //                printf("Writing next file: %s\n", sPath);
 // With no upfront reading, precise result is not reachable
-#ifdef TEST
-	if (LOWER_BORDER <= stats.total_obs_count && stats.total_obs_count < HIGHER_BORDER) {
-#endif
+
 				if (first_file) {
 					first_file = false;
 				} else {
 					fprintf(output, ",\n");
 				}
-#ifdef TEST
-	}
-#endif
-				old_obs_count = stats.obs_count;
 
-				stats = alcdef2json(sPath, output, stats, nested_mode);
-				
-				if (old_obs_count < stats.obs_count) {
-					stats.doc_count ++;
-					printf("stats.doc_count: %d\n", stats.doc_count);
-				}
-				
-#ifdef TEST
-	if (HIGHER_BORDER <= stats.total_obs_count) {
-		break;
-	}
-#endif				
+				alcdef2json(sPath, output, nested_mode);
             }
         }
     } while (FindNextFile(hFind, &fdFile)); //Find the next file.
