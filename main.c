@@ -1,79 +1,65 @@
-/* The MIT License (MIT)
+// The MIT License (MIT)
+// 
+// Copyright (c) 2015 Daniil Belyakov
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
-Copyright (c) 2015 Daniil Belyakov
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. */
+// Include global headers
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <windows.h>
 #include <time.h>
+#include <stdbool.h>
 
-// Line length
-#define LINE_LENGTH 512
-#define FILE_NAME_LENGTH 4096
+// Include local headers
+#include "alcdef.h"
 
-// Fields
-enum fields { WRONG_FIELD, BIBCODE, CIBAND, 
-CICORRECTION, CITARGET, COMMENT, COMPCI,
-COMPDEC, COMPNAME, COMPMAG, COMPRA, CONTACTINFO,
-CONTACTNAME, DATA, DELIMITER, DIFFERMAGS, 
-ENDDATA, ENDMETADATA, FILTER, LTCAPP, LTCDAYS,
-LTCTYPE, MAGADJUST, MAGBAND, MPCDESIG, OBJECTDEC,
-OBJECTNAME, OBJECTNUMBER, OBJECTRA, OBSERVERS,
-OBSLATITUDE, OBSLONGITUDE, PABB, PABL, PHASE,
-PUBLICATION, REDUCEDMAGS, REVISEDDATA, SESSIONDATE,
-SESSIONTIME, STANDARD, STARTMETADATA, UCORMAG };
-
-// Define utils
-// Define boolean data structure for convenience
-typedef enum { false, true } bool;
-
-// Declare the ALCDEF FIELD data structure
-typedef struct s_alcdef_field {
-	int code;
-	char name[LINE_LENGTH];
-	char value[LINE_LENGTH];
-} alcdef_field;
+// Define alcdef line length and file name length constraints
+#define LINE_LENGTH	ALCDEF_LINE_LENGTH
+#define PATH_LENGTH	4096
 
 // Declare the endpoint structure
 // For source and destinations points
-typedef struct endpoint {
-	char path[LINE_LENGTH];
+typedef struct endpoint 
+{
+	char path[PATH_LENGTH];
 	bool isFile;
 } endpoint;
 
 // Converts a string to lower characters
-char * stolower (char * line) {
-	char * p = line;
-	for ( ; * p; ++ p) *p = tolower(*p);
+char *stolower (char *line) 
+{
+	char *p = line;
+	for (; *p; ++p) *p = tolower(*p);
 	
 	return line;
 }
 
 // Escapes a string
-int escape_str (char * str) {
+int escape_str (char * str) 
+{
 	char buffer[LINE_LENGTH];
 	int i = 0, n = 0;
 
-	for (i = 0; i < strlen(str); i ++) {
+	for (i = 0; i < strlen(str); ++i) {
 		if (str[i] == '"') {
 			sprintf(buffer + i + n, "\\%c", str[i]);
 			n ++;
@@ -191,31 +177,20 @@ int get_field_code (char name[]) {
 	return field_code;
 }
 
-// Prepare a field for json
-bool prepare_for_json (alcdef_field * field_pointer) {
-	// Bring the field name to lower case
-	stolower(field_pointer -> name);
-	
-	// Escape the field value for further processing
-	escape_str(field_pointer -> value);
-	
-	return false;
-}
-
 // Reset a field
-bool reset_field (alcdef_field * field_pointer) {
+bool reset_field (alcdef_field *field_pointer) {
 	// Reset the field code
-	field_pointer -> code = 0;
+	field_pointer->code = 0;
 	
 	// Reset the field name and value
-	memset(field_pointer -> name, 0, LINE_LENGTH);
-	memset(field_pointer -> value, 0, LINE_LENGTH);
+	memset(field_pointer->name, 0, LINE_LENGTH);
+	memset(field_pointer->value, 0, LINE_LENGTH);
 	
 	return false;
 }
 
 // Define method for fetching a field data
-alcdef_field * get_field_data (alcdef_field * field_pointer, char line[]) {
+alcdef_field *get_field_data (alcdef_field *field_pointer, char line[]) {
 
 	// Reset the field's member values
 	reset_field(field_pointer);
@@ -224,21 +199,26 @@ alcdef_field * get_field_data (alcdef_field * field_pointer, char line[]) {
 	char * token = strtok(line, "=");
 
 	// Copy the name
-	strcpy(field_pointer -> name, token);
+	strcpy(field_pointer->name, token);
 	
 	// Get the next token
 	token = strtok(NULL, "=");
 	
 	// If token is present, copy it
 	if (token) {
-		strcpy(field_pointer -> value, token);
+		strcpy(field_pointer->value, token);
 	}
 	
 	// Save the field code
-	field_pointer -> code = get_field_code(field_pointer -> name);
+	field_pointer->code = get_field_code(field_pointer->name);
 	
-	// Prepare for JSON
-	prepare_for_json(field_pointer);
+	// Prepare the field for JSON
+	
+	// Bring the field name to lower case
+	stolower(field_pointer->name);
+	
+	// Escape the field value for further processing
+	escape_str(field_pointer->value);
 
 	// Return the field
 	return field_pointer;
@@ -255,19 +235,19 @@ int field_has_printable_value (int field_code) {
 	return (field_has_value(field_code) && (field_code != DELIMITER));
 }
 
-int output_boolean (FILE * output, alcdef_field field) {
+int output_boolean (FILE *output, alcdef_field field) {
 	return fprintf(output, "\"%s\":%s", field.name, stolower(field.value));
 }
 
-int output_string (FILE * output, alcdef_field field) {
+int output_string (FILE *output, alcdef_field field) {
 	return fprintf(output, "\"%s\":\"%s\"", field.name, field.value);
 }
 
-int output_integer (FILE * output, alcdef_field field) {
+int output_integer (FILE *output, alcdef_field field) {
 	return fprintf(output, "\"%s\":%s", field.name, field.value);
 }
 
-int output_double (FILE * output, alcdef_field field) {
+int output_double (FILE *output, alcdef_field field) {
 	
 	if (strlen(field.value) == 0) {
 		strcpy(field.value, "null");
@@ -276,10 +256,10 @@ int output_double (FILE * output, alcdef_field field) {
 	return fprintf(output, "\"%s\":%s", field.name, field.value);
 }
 
-void output_data (FILE * output, alcdef_field field, char * delimiter) {
+void output_data (FILE *output, alcdef_field field, char *delimiter) {
 	char tokens[LINE_LENGTH];
 	strcpy(tokens, field.value);
-	char * token = strtok(tokens, delimiter);
+	char *token = strtok(tokens, delimiter);
 	
 	// Output the Julian Date
 	fprintf(output, "{\"jd\":%s", token);
@@ -303,10 +283,10 @@ void output_data (FILE * output, alcdef_field field, char * delimiter) {
 	fprintf(output, "}");
 }
 
-void output_flat_data (FILE * output, alcdef_field field, char * delimiter, int entry_number) {
+void output_flat_data (FILE *output, alcdef_field field, char *delimiter, int entry_number) {
 	char tokens[LINE_LENGTH];
 	strcpy(tokens, field.value);
-	char * token = strtok(tokens, delimiter);
+	char *token = strtok(tokens, delimiter);
 	
 	// Output the Julian Date
 	fprintf(output, "\"jd%d\":%s", entry_number, token);
@@ -329,10 +309,10 @@ void output_flat_data (FILE * output, alcdef_field field, char * delimiter, int 
 }
 
 // Convert a single ALCDEF file to JSON
-bool alcdef2json (const char * input_file_path, FILE * output, bool nested_mode) {
+bool alcdef2json (const char *input_file_path, FILE *output, bool nested_mode) {
 	
 	// Open the file
-	FILE * input = fopen(input_file_path, "r");
+	FILE *input = fopen(input_file_path, "r");
 	
 	// If the next file was failed to open, report error
 	if (!input) {
@@ -349,7 +329,7 @@ bool alcdef2json (const char * input_file_path, FILE * output, bool nested_mode)
 	field.code = WRONG_FIELD;
 
 	// Define the line buffer and delimiter variable
-	char line[LINE_LENGTH], * delimiter;
+	char line[LINE_LENGTH], *delimiter;
 
 	// Variable to store the last index in the line
 	size_t last_line_index;
@@ -459,7 +439,7 @@ bool alcdef2json (const char * input_file_path, FILE * output, bool nested_mode)
 						output_flat_data(output, field, delimiter, data_count);
 					}
 					
-					data_count ++;
+					++data_count;
 					break;
 				case DELIMITER:
 					// Save the delimiter
@@ -512,7 +492,7 @@ bool alcdef2json (const char * input_file_path, FILE * output, bool nested_mode)
 }
 
 // Convert input data to required type output data
-bool convert_all (const char * from, const char * to, bool nested_mode)
+bool convert_all (const char *from, const char *to, bool nested_mode)
 {
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
@@ -520,7 +500,7 @@ bool convert_all (const char * from, const char * to, bool nested_mode)
 	bool first_file = true;
 	
 	// Define the output file
-	FILE * output = NULL;
+	FILE *output = NULL;
 	output = fopen(to, "w");
 	
 	if (!output) {
@@ -528,7 +508,7 @@ bool convert_all (const char * from, const char * to, bool nested_mode)
 		return true;
 	}
 
-    char sPath[FILE_NAME_LENGTH];
+    char sPath[PATH_LENGTH];
 
     // Specify a file mask. *.* = We want everything!
     sprintf(sPath, "%s/*.*", from);
@@ -588,7 +568,7 @@ bool convert_all (const char * from, const char * to, bool nested_mode)
     return false;
 }
 
-int main(int argc, char * argv[]) {
+int main(int argc, char *argv[]) {
 	
 	// Save the execution starting time
 	unsigned long int start_time = (unsigned long)time(NULL);
