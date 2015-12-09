@@ -31,18 +31,95 @@
 
 // Include local headers
 #include "alcdef.h"
-#include "alcdef2json.h"
+#include "alcdef_to_json.h"
+
+// Converts a directory of ALCDEF files to JSON
+bool AlcdefDirToJson (const char *source_path, const char *destination_path, const bool flat_mode)
+{
+    WIN32_FIND_DATA fdFile;
+    HANDLE hFind = NULL;
+
+	bool first_file_processed = false;
+	
+	// Define the output file
+	FILE *output = NULL;
+	output = fopen(destination_path, "w");
+	
+	if (!output) {
+		printf("OUTPUT FILE ERROR\n");
+		return true;
+	}
+
+    char sPath[MAX_PATH_LENGTH];
+
+    // Specify a file mask. *.* = We want everything!
+    sprintf(sPath, "%s/*.*", source_path);
+
+	printf("Output set to: %s\n", destination_path);
+	
+	// Check if path is valid
+    if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+        printf("Path not found: [%s]\n", source_path);
+        return true;
+    }
+
+	// OPEN JSON ARRAY
+	fprintf(output, "[");
+
+    do
+    {
+        // Find first file will always return "."
+        //    and ".." as the first two directories.
+        if (strcmp(fdFile.cFileName, ".") != 0
+                && strcmp(fdFile.cFileName, "..") != 0)
+        {
+
+			// Generate the next file path
+            sprintf(sPath, "%s/%s", source_path, fdFile.cFileName);
+
+            // Is the entity a File or Folder?
+            if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+				
+                printf("Directory, ignoring! :)");
+				
+            } else {
+				
+				// Write the next file to the target
+				//                printf("Writing next file: %s\n", sPath);
+				// With no upfront reading, precise result is not reachable
+
+				if (first_file_processed) {
+					fprintf(output, ",\n");
+				} else {
+					first_file_processed = true;
+				}
+
+				AlcdefToJson(sPath, flat_mode, output);
+            }
+        }
+    } while (FindNextFile(hFind, &fdFile)); //Find the next file.
+
+    FindClose(hFind);
+
+	// CLOSE JSON ARRAY
+	fprintf(output, "]");
+
+	fclose(output);
+	output = NULL;
+	
+    return false;
+}
 
 int main(int argc, char *argv[]) {
 	
 	// Save the execution starting time
-	unsigned long int start_time = (unsigned long)time(NULL);
+	unsigned long int startTime = (unsigned long)time(NULL);
 	
-	endpoint input, output;
+	Endpoint input, output;
 	
 	int i = 0;
 	
-	bool nested_mode = true;
+	bool flatMode = false;
 	
 	// TODO:
 	// --fromFile
@@ -77,17 +154,17 @@ int main(int argc, char *argv[]) {
 				}
 			} else if (strcmp("--flatMode", argv[i]) == 0) {
 				// Save the output mode
-				nested_mode = false;
+				flatMode = true;
 			}
 		}
 	}
 	
 	// Use case: ALCDEF_to_JSON --fromDir C://alcdef2json/alcdef --toFile C://alcdef2json/json/alcdefs.json
 	// Add support to output mode
-	convert_all(input.path, output.path, nested_mode);
+	AlcdefDirToJson(input.path, output.path, flatMode);
 
 	// Output the time elapsed for the convertion
-	printf("Time Elapsed: %lu seconds.\n", (unsigned long)time(NULL) - start_time);
+	printf("Time Elapsed: %lu seconds.\n", (unsigned long)time(NULL) - startTime);
 	
 	// Return false
 	return false;

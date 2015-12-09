@@ -1,4 +1,4 @@
-The ALCDEF to JSON Converter is a tool for conversion of ALCDEF astronomic data format to more popular and generic JSON data interchange format.
+The ALCDEF 2.0 to JSON Converter is a tool for conversion astronomic data stored in ALCDEF 2.0 format to more popular and generic JSON data interchange format.
 
 - ALCDEF format: http://minorplanetcenter.net/light_curve
 - JSON format: http://json.org/
@@ -6,8 +6,8 @@ The ALCDEF to JSON Converter is a tool for conversion of ALCDEF astronomic data 
   - Boolean strings from alcdef represented as booleans (lower case in JSON)
   - Strings are plain copied with commas replaced with dots and double quotes escaped
   - Doubles including the Julian Date represented as doubles
-  - In flat mode, data entries are suffixed with their index numbers
-  - In nested mode, data entries are put into an array, where each entry is an object with data's sub-fields as properties
+  - In the flat mode, data entries are suffixed with their index numbers
+  - In the nested mode, data entries are put into arrays, where each entry is an object with subfields of data represented as key-value pairs
 
 Flags
 =====

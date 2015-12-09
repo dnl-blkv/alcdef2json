@@ -10,215 +10,171 @@
 // Include local headers
 #include "alcdef.h"
 
-// Reset a field
-bool reset_field (alcdef_field *field_pointer) {
-	// Reset the field code
-	field_pointer->code = 0;
-	
-	// Reset the field name and value
-	memset(field_pointer->name, 0, ALCDEF_LINE_LENGTH);
-	memset(field_pointer->value, 0, ALCDEF_LINE_LENGTH);
-	
-	return false;
-}
-
 // Get the code for a given field
-int get_field_code (alcdef_field *field) {
+FieldCode GetFieldCode (const AlcdefField *field) {
 	
-	char *name = field->name;
+	const char *name = field->name;
 	
-	int field_code = WRONG_FIELD;
+	FieldCode field_code = kWrongField;
 	  
 	if (strcmp(name, "BIBCODE") == 0) {
-		field_code = BIBCODE;
+		field_code = kBibCode;
 	} else if (strcmp(name, "CIBAND") == 0) {
-		field_code = CIBAND;
+		field_code = kCiBand;
 	} else if (strcmp(name, "CICORRECTION") == 0) {
-		field_code = CICORRECTION;
+		field_code = kCiCorrection;
 	} else if (strcmp(name, "CITARGET") == 0) {
-		field_code = CITARGET;
+		field_code = kCiTarget;
 	} else if (strcmp(name, "COMMENT") == 0) {
-		field_code = COMMENT;
+		field_code = kComment;
 	} else if (strcmp(name, "CONTACTINFO") == 0) {
-		field_code = CONTACTINFO;
+		field_code = kContactInfo;
 	} else if (strcmp(name, "CONTACTNAME") == 0) {
-		field_code = CONTACTNAME;
+		field_code = kContactName;
 	} else if (strcmp(name, "DATA") == 0) {
-		field_code = DATA;
+		field_code = kData;
 	} else if (strcmp(name, "DELIMITER") == 0) {
-		field_code = DELIMITER;
+		field_code = kDelimiter;
 	} else if (strcmp(name, "DIFFERMAGS") == 0) {
-		field_code = DIFFERMAGS;
+		field_code = kDifferMags;
 	} else if (strcmp(name, "ENDDATA") == 0) {
-		field_code = ENDDATA;
+		field_code = kEndData;
 	} else if (strcmp(name, "ENDMETADATA") == 0) {
-		field_code = ENDMETADATA;
+		field_code = kEndMetadata;
 	} else if (strcmp(name, "FILTER") == 0) {
-		field_code = FILTER;
+		field_code = kFilter;
 	} else if (strcmp(name, "LTCAPP") == 0) {
-		field_code = LTCAPP;
+		field_code = kLtcApp;
 	} else if (strcmp(name, "LTCDAYS") == 0) {
-		field_code = LTCDAYS;
+		field_code = kLtcDays;
 	} else if (strcmp(name, "LTCTYPE") == 0) {
-		field_code = LTCTYPE;
+		field_code = kLtcType;
 	} else if (strcmp(name, "MAGADJUST") == 0) {
-		field_code = MAGADJUST;
+		field_code = kMagAdjust;
 	} else if (strcmp(name, "MAGBAND") == 0) {
-		field_code = MAGBAND;
+		field_code = kMagBand;
 	} else if (strcmp(name, "MPCDESIG") == 0) {
-		field_code = MPCDESIG;
+		field_code = kMpcDesig;
 	} else if (strcmp(name, "OBJECTDEC") == 0) {
-		field_code = OBJECTDEC;
+		field_code = kObjectDec;
 	} else if (strcmp(name, "OBJECTNAME") == 0) {
-		field_code = OBJECTNAME;
+		field_code = kObjectName;
 	} else if (strcmp(name, "OBJECTNUMBER") == 0) {
-		field_code = OBJECTNUMBER;
+		field_code = kObjectNumber;
 	} else if (strcmp(name, "OBJECTRA") == 0) {
-		field_code = OBJECTRA;
+		field_code = kObjectRa;
 	} else if (strcmp(name, "OBSERVERS") == 0) {
-		field_code = OBSERVERS;
+		field_code = kObservers;
 	} else if (strcmp(name, "OBSLATITUDE") == 0) {
-		field_code = OBSLATITUDE;
+		field_code = kObsLatitude;
 	} else if (strcmp(name, "OBSLONGITUDE") == 0) {
-		field_code = OBSLONGITUDE;
+		field_code = kObsLongitude;
 	} else if (strcmp(name, "PABB") == 0) {
-		field_code = PABB;
+		field_code = kPabB;
 	} else if (strcmp(name, "PABL") == 0) {
-		field_code = PABL;
+		field_code = kPabL;
 	} else if (strcmp(name, "PHASE") == 0) {
-		field_code = PHASE;
+		field_code = kPhase;
 	} else if (strcmp(name, "PUBLICATION") == 0) {
-		field_code = PUBLICATION;
+		field_code = kPublication;
 	} else if (strcmp(name, "REDUCEDMAGS") == 0) {
-		field_code = REDUCEDMAGS;
+		field_code = kReducedMags;
 	} else if (strcmp(name, "REVISEDDATA") == 0) {
-		field_code = REVISEDDATA;
+		field_code = kRevisedData;
 	} else if (strcmp(name, "SESSIONDATE") == 0) {
-		field_code = SESSIONDATE;
+		field_code = kSessionDate;
 	} else if (strcmp(name, "SESSIONTIME") == 0) {
-		field_code = SESSIONTIME;
+		field_code = kSessionTime;
 	} else if (strcmp(name, "STANDARD") == 0) {
-		field_code = STANDARD;
+		field_code = kStandard;
 	} else if (strcmp(name, "STARTMETADATA") == 0) {
-		field_code = STARTMETADATA;
+		field_code = kStartMetadata;
 	} else if (strcmp(name, "UCORMAG") == 0) {
-		field_code = UCORMAG;
-	
-	// The following fields are numbered, thus
+		field_code = kUCorMag;
+	// The following fields are suffixed with numbers, thus
 	// strstr() is used instead of strcmp
 	} else if (strstr(name, "COMPCI") == name) {
-		field_code = COMPCI;
+		field_code = kCompCi;
 	} else if (strstr(name, "COMPDEC") == name) {
-		field_code = COMPDEC;
+		field_code = kCompDec;
 	} else if (strstr(name, "COMPNAME") == name) {
-		field_code = COMPNAME;
+		field_code = kCompName;
 	} else if (strstr(name, "COMPMAG") == name) {
-		field_code = COMPMAG;
+		field_code = kCompMag;
 	} else if (strstr(name, "COMPRA") == name) {
-		field_code = COMPRA;
+		field_code = kCompRa;
 	}
 	
 	return field_code;
 }
 
-// Converts all string characters to lower case
-char *stolower (char *line) 
-{
-	char *p = line;
-	for (; *p; ++p) *p = tolower(*p);
-	
-	return line;
-}
-
-// Escapes a string
-int escape_str (char *str) 
-{
-	char buffer[ALCDEF_LINE_LENGTH];
-	int i = 0, n = 0;
-
-	for (i = 0; i < strlen(str); ++i) {
-		if (str[i] == '"') {
-			sprintf(buffer + i + n, "\\%c", str[i]);
-			n ++;
-		} else if (str[i] == ',') {
-			// TODO: Temporal solution for dots, an alternative should be found
-			str[i] = '.';
-		} else {
-			sprintf(buffer + i + n, "%c", str[i]);
-		}
-	}
-	
-	if (n > 0) {
-		memset(str, 0, strlen(str));
-		strcpy(str, buffer);
-	}
-	
-	return 0;
-}
-
 // Creates a new field, populates it from an ALCDEF document line and returns pointer to it
-alcdef_field *create_field (char alcdef_line[]) {
-	alcdef_field *field = malloc(sizeof(field));
+AlcdefField *CreateField (const char *alcdef_line) {
+	AlcdefField *field = malloc(sizeof(field));
 	
-	return populate_field(field, alcdef_line);
+	return PopulateField(alcdef_line, field);
 }
 
 // Populates an empty alcdef field from an ALCDEF document line
-alcdef_field *populate_field (alcdef_field *field_pointer, char alcdef_line[]) {
+AlcdefField *PopulateField (const char *alcdef_line, AlcdefField *field) {
 	
 	// Get the token(s)
-	char * token = strtok(alcdef_line, "=");
+	char name_value[MAX_ALCDEF_LINE_LENGTH];
+	strcpy(name_value, alcdef_line);
+	char *token = strtok(name_value, "=");
 
 	// Copy the name
-	strcpy(field_pointer->name, token);
+	strcpy(field->name, token);
 	
 	// Get the next token
 	token = strtok(NULL, "=");
 	
 	// If token is present, copy it
 	if (token) {
-		strcpy(field_pointer->value, token);
+		strcpy(field->value, token);
 	}
 	
 	// Save the field code
-	field_pointer->code = get_field_code(field_pointer);
+	field->code = GetFieldCode(field);
 	
 	// ERROR: wrong field name discovered
-	if (field_pointer->code == WRONG_FIELD) {
-		printf("WRONG FIELD NAME: %s\n", field_pointer->name);
+	if (field->code == kWrongField) {
+		printf("WRONG FIELD NAME: %s\n", field->name);
 	}
-	
-	// Posprocess the field to prepare it for JSON
-	
-	// Bring the field name to lower case
-	stolower(field_pointer->name);
-	
-	// Escape the field value for further processing
-	escape_str(field_pointer->value);
 
 	// Return the field
-	return field_pointer;
+	return field;
+}
+
+// Reset a field
+bool ResetField (AlcdefField *field) {
+	// Reset the field code
+	field->code = kWrongField;
+	
+	// Reset the field name and value
+	memset(field->name, 0, MAX_ALCDEF_LINE_LENGTH);
+	memset(field->value, 0, MAX_ALCDEF_LINE_LENGTH);
+	
+	return false;
 }
 
 // Repopulates a non-empty alcdef field from an ALCDEF document line
-alcdef_field *repopulate_field (alcdef_field *field_pointer, char alcdef_line[]) {
+AlcdefField *RepopulateField (const char *alcdef_line, AlcdefField *field) {
 	// Reset the field's member values
-	reset_field(field_pointer);
+	ResetField(field);
 	
-	populate_field(field_pointer, alcdef_line);
+	PopulateField(alcdef_line, field);
 	
-	return field_pointer;
+	return field;
 }
 
 // Check if a given field is a valid field with value
-int field_has_value (int field_code) {
-	return ((field_code != WRONG_FIELD) && 
-	(field_code != STARTMETADATA) &&
-	(field_code != ENDMETADATA) &&
-	(field_code != ENDDATA));
+bool field_has_value (const FieldCode field_code) {
+	return ((field_code != kWrongField) && (field_code != kStartMetadata) &&
+			(field_code != kEndMetadata) && (field_code != kEndData));
 }
 
 // Check if a given field has a value printable in JSON
-int field_has_printable_value (int field_code) {
-	return (field_has_value(field_code) && (field_code != DELIMITER));
+bool field_has_printable_value (const FieldCode field_code) {
+	return (field_has_value(field_code) && (field_code != kDelimiter));
 }
