@@ -92,9 +92,9 @@ int PrintDataField (FILE *output, const AlcdefField *field, const char *delimite
 	}
 	
 	// Save the subfields names and tools for iteration over them
-	int   subfield_number 	= 0;
-	char *subfield_names[4] = {"jd", "mag", "magerr", "airmass"},
-		 *subfield_name 	= subfield_names[subfield_number];
+	int subfield_number = 0;
+	char *subfield_names[4] = {"jd", "mag", "magerr", "airmass"};
+	char *subfield_name = subfield_names[subfield_number];
 	
 	// Get the pointer to the first subfield value
 	char subfield_values[MAX_LINE_LENGTH];
@@ -115,8 +115,8 @@ int PrintDataField (FILE *output, const AlcdefField *field, const char *delimite
 		
 		// Go to the next subfield
 		++ subfield_number;
-		subfield_name 	= subfield_names[subfield_number];
-		subfield_value	= strtok(NULL, delimiter);
+		subfield_name = subfield_names[subfield_number];
+		subfield_value = strtok(NULL, delimiter);
 	}
 
 	// Terminate according to the mode
@@ -146,8 +146,8 @@ bool AlcdefToJson (const char *input_file_path, const bool flat_mode, FILE *outp
 
 	// The data fields are counted starting with 1, similarly
 	// to the {X}-values of ALCDEF
-	int previous_field_code	= kWrongField,
-		data_number		= flat_mode ? 1 : -1;
+	int previous_field_code = kWrongField;
+	int data_number = flat_mode ? 1 : -1;
 	
 	// Create the field buffer
 	AlcdefField field;

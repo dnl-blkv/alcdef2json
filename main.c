@@ -36,6 +36,8 @@
 // Converts a directory of ALCDEF files to JSON
 bool AlcdefDirToJson (const char *source_path, const char *destination_path, const bool flat_mode)
 {
+	// The Win32 variables have names in mixed case due to the naming standard
+	// used in windows.h library
     WIN32_FIND_DATA fdFile;
     HANDLE hFind = NULL;
 
@@ -50,15 +52,15 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
 		return true;
 	}
 
-    char sPath[MAX_PATH_LENGTH];
+    char full_source_path[MAX_PATH_LENGTH];
 
     // Specify a file mask. *.* = We want everything!
-    sprintf(sPath, "%s/*.*", source_path);
+    sprintf(full_source_path, "%s/*.*", source_path);
 
 	printf("Output set to: %s\n", destination_path);
 	
 	// Check if path is valid
-    if ((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+    if ((hFind = FindFirstFile(full_source_path, &fdFile)) == INVALID_HANDLE_VALUE) {
         printf("Path not found: [%s]\n", source_path);
         return true;
     }
@@ -75,7 +77,7 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
         {
 
 			// Generate the next file path
-            sprintf(sPath, "%s/%s", source_path, fdFile.cFileName);
+            sprintf(full_source_path, "%s/%s", source_path, fdFile.cFileName);
 
             // Is the entity a File or Folder?
             if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -94,7 +96,7 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
 					first_file_processed = true;
 				}
 
-				AlcdefToJson(sPath, flat_mode, output);
+				AlcdefToJson(full_source_path, flat_mode, output);
             }
         }
     } while (FindNextFile(hFind, &fdFile)); //Find the next file.
@@ -152,7 +154,7 @@ int main(int argc, char *argv[]) {
 					strcpy(output.path, argv[i + 1]);
 					output.isFile = true;
 				}
-			} else if (strcmp("--flatMode", argv[i]) == 0) {
+			} else if (strcmp("--flat", argv[i]) == 0) {
 				// Save the output mode
 				flatMode = true;
 			}
