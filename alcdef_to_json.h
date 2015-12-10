@@ -16,23 +16,23 @@
 // The line length here is three times longer than ALCDEF line
 // because escaping required for JSON could potentially increase
 // its length three-fold
-#define MAX_LINE_LENGTH	3 * MAX_ALCDEF_LINE_LENGTH
+#define MAX_LINE_LENGTH  3 * MAX_ALCDEF_LINE_LENGTH
 // Path length is maximal for ext4 file system which is the largest
 // among all the often-used file systems
-#define MAX_PATH_LENGTH	4096
+#define MAX_PATH_LENGTH  4096
 
 // Declare the endpoint structure
 // For source and destinations points
 typedef struct Endpoint {
-	char path[MAX_PATH_LENGTH];
-	bool isFile;
+  char path[MAX_PATH_LENGTH];
+  bool isFile;
 } Endpoint;
 
 // Enum describing field types for proper output
 typedef enum {
-	kBooleanField,
-	kStringField,
-	kNumberField
+  kBooleanField,
+  kStringField,
+  kNumberField
 } FieldType;
 
 // Converts a string to its equivalent in lower case
