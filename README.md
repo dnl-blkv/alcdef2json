@@ -16,14 +16,14 @@ The main conversion points are as follows:
 Flags
 =====
 The program currently accepts the following flags:
-* --fromFile (upcoming) or --fromDir - **required**, with a single argument;
+- --fromFile (upcoming) or --fromDir - **required**, with a single argument;
   the argument defines the address of the input ALCDEF file or directory with 
   such files, respectively
-* --toFile or --toDir (upcoming) - **required**, with a single argument;
+- --toFile or --toDir (upcoming) - **required**, with a single argument;
   the argument defines the address of the output JSON file or directory for
   such files in case of dir-to-dir conversion; the output file(s) is/are 
   created automatically if not exist
-* --flat - **optional**, with no arguments; defines the flat operation mode 
+- --flat - **optional**, with no arguments; defines the flat operation mode 
 (flat or nested); default choice is nested
 
 Example use case
