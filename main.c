@@ -19,17 +19,12 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-
-// Include global headers
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <windows.h>
 #include <time.h>
 #include <stdbool.h>
 
-// Include local headers
 #include "alcdef.h"
 #include "alcdef_to_json.h"
 
@@ -38,8 +33,8 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
 {
   // The Win32 variables have names in mixed case due to the naming standard
   // used in windows.h library
-    WIN32_FIND_DATA fdFile;
-    HANDLE hFind = NULL;
+  WIN32_FIND_DATA fdFile;
+  HANDLE hFind = NULL;
 
   bool first_file_processed = false;
   
@@ -52,10 +47,10 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
     return true;
   }
 
-    char full_source_path[MAX_PATH_LENGTH];
+  char full_source_path[MAX_PATH_LENGTH];
 
-    // Specify a file mask. *.* = We want everything!
-    sprintf(full_source_path, "%s/*.*", source_path);
+  // Specify a file mask. *.* = We want everything!
+  sprintf(full_source_path, "%s/*.*", source_path);
 
   printf("Output set to: %s\n", destination_path);
   
@@ -70,38 +65,49 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
 
     do
     {
-        // Find first file will always return "."
-        //    and ".." as the first two directories.
-        if (strcmp(fdFile.cFileName, ".") != 0
-                && strcmp(fdFile.cFileName, "..") != 0)
-        {
+      // Find first file will always return "."
+      //    and ".." as the first two directories.
+      if (strcmp(fdFile.cFileName, ".") != 0 && 
+          strcmp(fdFile.cFileName, "..") != 0)
+      {
 
-      // Generate the next file path
-            sprintf(full_source_path, "%s/%s", source_path, fdFile.cFileName);
+        // Generate the next file path
+        sprintf(full_source_path, "%s/%s", source_path, fdFile.cFileName);
 
-            // Is the entity a File or Folder?
-            if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-        
-                printf("Directory, ignoring! :)");
-        
-            } else {
-        
-        // Write the next file to the target
-        //                printf("Writing next file: %s\n", sPath);
-        // With no upfront reading, precise result is not reachable
-
-        if (first_file_processed) {
-          fprintf(output, ",\n");
+        // Is the entity a File or Folder?
+        if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+    
+          printf("Directory, ignoring! :)");
+    
         } else {
-          first_file_processed = true;
-        }
+    
+          // Write the next file to the target
+          //                printf("Writing next file: %s\n", sPath);
+          // With no upfront reading, precise result is not reachable
 
-        AlcdefToJson(full_source_path, flat_mode, output);
-            }
+          if (first_file_processed) {
+            fprintf(output, ",\n");
+          } else {
+            first_file_processed = true;
+          }
+          
+          // Open the input file
+          FILE *input = fopen(full_source_path, "r");
+
+          // If the next file was failed to open, report error
+          if (!input) {
+          printf("INPUT FILE ERROR! Path: %s\n", full_source_path);
+            // Wait for any input key
+            getchar();
+            return true;
+          }
+
+          AlcdefToJson(output, input, flat_mode);
         }
+      }
     } while (FindNextFile(hFind, &fdFile)); //Find the next file.
 
-    FindClose(hFind);
+  FindClose(hFind);
 
   // CLOSE JSON ARRAY
   fprintf(output, "]");
@@ -109,7 +115,7 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
   fclose(output);
   output = NULL;
   
-    return false;
+  return false;
 }
 
 int main(int argc, char *argv[]) {

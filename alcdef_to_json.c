@@ -1,13 +1,29 @@
-// Include global headers
+// The MIT License (MIT)
+// 
+// Copyright (c) 2015 Daniil Belyakov
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <windows.h>
-#include <time.h>
 #include <stdbool.h>
 
-// Include local headers
 #include "alcdef.h"
 #include "alcdef_to_json.h"
 
@@ -20,7 +36,10 @@ char *stolower (char *line)
   return line;
 }
 
-// Escapes a string for JSON
+// Escapes a string for usage with JSON and MongoDB(!). Basically, escapes
+// double quotes and replaces commas with dots. The latter was done solely
+// because of the original purpose of the program, which was to ease import 
+// of ALCDEF data to MongoDB.
 int JsonEscapeString (char *str) 
 {
   char buffer[MAX_LINE_LENGTH];
@@ -31,7 +50,8 @@ int JsonEscapeString (char *str)
       sprintf(buffer + i + n, "\\%c", str[i]);
       n ++;
     } else if (str[i] == ',') {
-      // TODO: Temporal solution for dots, an alternative should be found
+      // TODO(dnl-blkv@gmail.com): get rid of comma replacement; possibly,
+      // change it to some kind of comma escaping.
       str[i] = '.';
     } else {
       sprintf(buffer + i + n, "%c", str[i]);
@@ -48,12 +68,12 @@ int JsonEscapeString (char *str)
 
 // Output a single ALCDEF field
 int PrintMetadataField (FILE *output, const AlcdefField *field, const FieldType field_type) {
-  // Create the json key out of the alcdef field name
+  // Create a json key out of the alcdef field name
   char json_key[MAX_LINE_LENGTH];
   strcpy(json_key, field->name);
   stolower(json_key);
   
-  // Create the json-compatible value out of the alcdef field value
+  // Create a json value out of the alcdef field value
   char json_value[MAX_LINE_LENGTH];
   strcpy(json_value, field->value);
   JsonEscapeString(json_value);
@@ -85,7 +105,6 @@ int PrintMetadataField (FILE *output, const AlcdefField *field, const FieldType 
 // Negative data number indicates the nested mode
 // The first argument is output due to the nature of fprintf function on which this function relies
 int PrintDataField (FILE *output, const AlcdefField *field, const char *delimiter, const int data_number) {
-  
   // Output the opening curly brace for the flat mode
   if (data_number < 0) {
     fprintf(output, "{");
@@ -103,10 +122,10 @@ int PrintDataField (FILE *output, const AlcdefField *field, const char *delimite
   
   // Output the subfields
   while (subfield_value) {
-    
     // Add comma to separate the subfields
     if (subfield_number > 0) fprintf(output, ",");
     
+    // Data number below zero indicates the flat mode
     if (data_number < 0) {
       fprintf(output, "\"%s\":%s", subfield_name, subfield_value);
     } else {
@@ -119,10 +138,10 @@ int PrintDataField (FILE *output, const AlcdefField *field, const char *delimite
     subfield_value = strtok(NULL, delimiter);
   }
 
-  // Terminate according to the mode
   if (data_number < 0) {
     fprintf(output, "}");
   } else {
+    // For flat mode, increase the number of data field
     return (data_number + 1);
   }
   
@@ -130,56 +149,44 @@ int PrintDataField (FILE *output, const AlcdefField *field, const char *delimite
   return data_number;
 }
 
-// Converts a single ALCDEF file to JSON
-bool AlcdefToJson (const char *input_file_path, const bool flat_mode, FILE *output) {
-  
-  // Open the input file
-  FILE *input = fopen(input_file_path, "r");
-  
-  // If the next file was failed to open, report error
-  if (!input) {
-  printf("INPUT FILE ERROR! Path: %s\n", input_file_path);
-    // Wait for any input key
-    getchar();
-    return true;
-  }
-
+// Writes a single ALCDEF file from input to a JSON output
+bool AlcdefToJson (FILE *output, FILE *input, const bool flat_mode) {
   // The data fields are counted starting with 1, similarly
   // to the {X}-values of ALCDEF
   int previous_field_code = kWrongField;
+  // The number of data line in the current lightcurve block
   int data_number = flat_mode ? 1 : -1;
   
-  // Create the field buffer
+  // Buffer to store the ALCDEF lines
+  char alcdef_line[MAX_LINE_LENGTH];
+  
+  // Buffer to store the fields data
   AlcdefField field;
   field.code = kWrongField;
-
-  // Define the alcdef_line buffer and delimiter variable
-  char alcdef_line[MAX_LINE_LENGTH];
+  
+  // Pointer to the ALCDEF data delimiter (either \t or | in ALCDEF 2.0)
   char *delimiter;
 
-  // Variable to store the last index in the alcdef_line
   size_t line_length;
 
-  // Read the input file alcdef_line by alcdef_line to the alcdef_line buffer
+  // Scan the input file line by line
   while (fgets(alcdef_line, MAX_LINE_LENGTH, input) != NULL) {
-    
-    // Save the last alcdef_line index
     line_length = strlen(alcdef_line);
-    
-    // If the alcdef_line ends with newline, replace with \0
+    // If a current ALCDEF line ends with a newline character, replace with \0
+    // to mark the end of the line
     if (alcdef_line[line_length - 1] == '\n') {
       alcdef_line[line_length - 1] = '\0';
     }
     
-    // Save the old field code
+    // Save the old field code for further reference
     previous_field_code = field.code;
     
-    // Get the field code
+    // Fetch the field from the new line into the buffer
     RepopulateField(alcdef_line, &field);
 
     // If the field had some data, output comma to separate key-value pairs
     // in the resulting JSON file
-    if (field_has_printable_value(field.code) && field_has_value(previous_field_code)) {
+    if (field_has_significant_value(field.code) && field_has_value(previous_field_code)) {
       fprintf(output, ",");
     }
     
@@ -191,7 +198,6 @@ bool AlcdefToJson (const char *input_file_path, const bool flat_mode, FILE *outp
     
     // Process the field according to its code
     switch (field.code) {
-      
       // String fields
       case kBibCode:
       case kCiBand:
@@ -227,7 +233,7 @@ bool AlcdefToJson (const char *input_file_path, const bool flat_mode, FILE *outp
         break;
       }
       // Number fields
-      // Double fields
+      //  Double fields
       case kCiTarget:
       case kLtcDays:
       case kMagAdjust:
@@ -237,10 +243,10 @@ bool AlcdefToJson (const char *input_file_path, const bool flat_mode, FILE *outp
       case kPabL:
       case kPhase:
       case kUCorMag:
-      // Double {X} - fields
+      //  Double {X} - fields
       case kCompCi:
       case kCompMag:
-      // Integer fields
+      //  Integer fields
       case kObjectNumber: {
         PrintMetadataField(output, &field, kNumberField);
         break;
@@ -261,6 +267,7 @@ bool AlcdefToJson (const char *input_file_path, const bool flat_mode, FILE *outp
       }
       // Extreme fields
       case kStartMetadata: {
+        // At this point a new lightcurve block begins
         fprintf(output, "{");
         
         if (!flat_mode) {
@@ -281,12 +288,12 @@ bool AlcdefToJson (const char *input_file_path, const bool flat_mode, FILE *outp
         if (!flat_mode) {
           fprintf(output, "]");
         } else {
-          // Reset data number to the initial value
+          // Reset the data number
           data_number = 1;
         }
         
         fprintf(output, "}");
-        
+        // At this point a lightcurve block ends
         break;
       }
       default: {

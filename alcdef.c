@@ -1,21 +1,40 @@
-// Include global headers
+// The MIT License (MIT)
+// 
+// Copyright (c) 2015 Daniil Belyakov
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-#include <windows.h>
-#include <time.h>
 #include <stdbool.h>
 
-// Include local headers
 #include "alcdef.h"
 
-// Get the code for a given field
-FieldCode GetFieldCode (const AlcdefField *field) {
+// Finds a code corresponding to a field using the field name. The code
+// depends solely on the field name and, therefore, appears to be an extra
+// field. It, however, helps to improve the further performance when dealing
+// with the fields, since integer comparison is much less cpu-time-consuming
+// than string comparison.
+AlcdefFieldCode FindFieldCode (const AlcdefField *field) {
   
   const char *name = field->name;
   
-  FieldCode field_code = kWrongField;
+  AlcdefFieldCode field_code = kWrongField;
     
   if (strcmp(name, "BIBCODE") == 0) {
     field_code = kBibCode;
@@ -108,41 +127,31 @@ FieldCode GetFieldCode (const AlcdefField *field) {
   return field_code;
 }
 
-// Creates a new field, populates it from an ALCDEF document line and returns pointer to it
-AlcdefField *CreateField (const char *alcdef_line) {
-  AlcdefField *field = malloc(sizeof(field));
-  
-  return PopulateField(alcdef_line, field);
-}
-
-// Populates an empty alcdef field from an ALCDEF document line
+// Populates an empty ALCDEF field from an ALCDEF document line
 AlcdefField *PopulateField (const char *alcdef_line, AlcdefField *field) {
   
-  // Get the token(s)
-  char name_value[MAX_ALCDEF_LINE_LENGTH];
-  strcpy(name_value, alcdef_line);
-  char *token = strtok(name_value, "=");
+  // Get the field name and value as a two-elements array
+  char name_value_pair[MAX_ALCDEF_LINE_LENGTH];
+  strcpy(name_value_pair, alcdef_line);
+  char *token = strtok(name_value_pair, "=");
 
-  // Copy the name
+  // Save the name from the first element
   strcpy(field->name, token);
   
-  // Get the next token
+  // Save the value from the second element if such exists
   token = strtok(NULL, "=");
-  
-  // If token is present, copy it
   if (token) {
     strcpy(field->value, token);
   }
   
   // Save the field code
-  field->code = GetFieldCode(field);
+  field->code = FindFieldCode(field);
   
   // ERROR: wrong field name discovered
   if (field->code == kWrongField) {
     printf("WRONG FIELD NAME: %s\n", field->name);
   }
 
-  // Return the field
   return field;
 }
 
@@ -150,7 +159,6 @@ AlcdefField *PopulateField (const char *alcdef_line, AlcdefField *field) {
 bool ResetField (AlcdefField *field) {
   // Reset the field code
   field->code = kWrongField;
-  
   // Reset the field name and value
   memset(field->name, 0, MAX_ALCDEF_LINE_LENGTH);
   memset(field->value, 0, MAX_ALCDEF_LINE_LENGTH);
@@ -160,21 +168,20 @@ bool ResetField (AlcdefField *field) {
 
 // Repopulates a non-empty alcdef field from an ALCDEF document line
 AlcdefField *RepopulateField (const char *alcdef_line, AlcdefField *field) {
-  // Reset the field's member values
   ResetField(field);
-  
   PopulateField(alcdef_line, field);
   
   return field;
 }
 
-// Check if a given field is a valid field with value
-bool field_has_value (const FieldCode field_code) {
+// Checks if a given field is a valid field with value
+bool field_has_value (const AlcdefFieldCode field_code) {
   return ((field_code != kWrongField) && (field_code != kStartMetadata) &&
       (field_code != kEndMetadata) && (field_code != kEndData));
 }
 
-// Check if a given field has a value printable in JSON
-bool field_has_printable_value (const FieldCode field_code) {
+// Checks if a given field has a value significant to the ALCDEF lightcurve
+// block content, not format
+bool field_has_significant_value (const AlcdefFieldCode field_code) {
   return (field_has_value(field_code) && (field_code != kDelimiter));
 }
