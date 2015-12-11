@@ -24,13 +24,36 @@
 #include <windows.h>
 #include <time.h>
 #include <stdbool.h>
+#include <sys/stat.h>
 
 #include "alcdef.h"
 #include "alcdef_to_json.h"
 
-// Converts a directory of ALCDEF files to JSON
-bool AlcdefDirToJson (const char *source_path, const char *destination_path, const bool flat_mode)
-{
+typedef enum PathType {
+  kDirectoryPath,
+  kFilePath,
+  kOtherPath,
+  kWrongPath
+} PathType;
+
+// Gets the type of a given path
+PathType GetPathType (const char *path) {
+  struct stat s;
+  if (stat(path, &s) == 0) {
+      if (s.st_mode & S_IFDIR) {
+          return kDirectoryPath;
+      } else if (s.st_mode & S_IFREG) {
+          return kFilePath;
+      } else {
+          return kOtherPath;
+      }
+  } else {
+      return kWrongPath;
+  }
+}
+
+// Converts A single ALCDEF directory to a single JSON file
+bool ConvertAlcdefDirToJsonFile (const char *alcdef_path, const char *json_path, const bool flat_mode) {
   // The Win32 variables have names in mixed case due to the naming standard
   // used in windows.h library
   WIN32_FIND_DATA fdFile;
@@ -40,7 +63,7 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
   
   // Define the output file
   FILE *output = NULL;
-  output = fopen(destination_path, "w");
+  output = fopen(json_path, "w");
   
   if (!output) {
     printf("OUTPUT FILE ERROR\n");
@@ -50,13 +73,13 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
   char full_source_path[MAX_PATH_LENGTH];
 
   // Specify a file mask. *.* = We want everything!
-  sprintf(full_source_path, "%s/*.*", source_path);
+  sprintf(full_source_path, "%s/*.*", alcdef_path);
 
-  printf("Output set to: %s\n", destination_path);
+  printf("Output set to: %s\n", json_path);
   
   // Check if path is valid
     if ((hFind = FindFirstFile(full_source_path, &fdFile)) == INVALID_HANDLE_VALUE) {
-        printf("Path not found: [%s]\n", source_path);
+        printf("Path not found: [%s]\n", alcdef_path);
         return true;
     }
 
@@ -72,7 +95,7 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
       {
 
         // Generate the next file path
-        sprintf(full_source_path, "%s/%s", source_path, fdFile.cFileName);
+        sprintf(full_source_path, "%s/%s", alcdef_path, fdFile.cFileName);
 
         // Is the entity a File or Folder?
         if (fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
@@ -118,47 +141,65 @@ bool AlcdefDirToJson (const char *source_path, const char *destination_path, con
   return false;
 }
 
+// Converts ALCDEF file(s) to JSON file(s)
+bool ConvertAllAlcdefToJson (const char *alcdef_path, const char *json_path, const bool flat_mode)
+{
+  // TODO FOR GITHUB:
+  // 4. File to Directory (split file into separate observations?)
+  
+  // Get ALCDEF path
+  PathType alcdef_path_type = GetPathType(alcdef_path);
+  
+  if ((alcdef_path_type == kOtherPath) || (alcdef_path_type == kWrongPath)) {
+    printf("ERROR: wrong ALCDEF path discovered! Path type: %d\n", alcdef_path_type);
+    return true;
+  }
+  
+  // Get JSON path
+  PathType json_path_type = GetPathType(json_path);
+
+  if ((json_path_type == kOtherPath) || (json_path_type == kWrongPath)) {
+    printf("ERROR: wrong JSON path discovered! Path type: %d\n", json_path_type);
+    return true;
+  }
+  
+  if (alcdef_path_type == kDirectoryPath) {
+    if (json_path_type == kDirectoryPath) {
+      // 1. Directory to Directory (ALCDEF files directory into JSON files directory)
+    } else {
+      // 2. Directory to File (all ALCDEF into a single JSON)
+      ConvertAlcdefDirToJsonFile(alcdef_path, json_path, flat_mode);
+    }
+  } else {
+    // 3. File to File (Single ALCDEF file into a single JSON file)
+  }
+  
+  return false;
+}
+
 int main(int argc, char *argv[]) {
   
   // Save the execution starting time
   unsigned long int startTime = (unsigned long)time(NULL);
   
-  Endpoint input, output;
+  char fromPath[MAX_PATH_LENGTH];
+  char toPath[MAX_PATH_LENGTH];
+  bool flatMode = false;
   
   int i = 0;
   
-  bool flatMode = false;
-  
-  // TODO:
-  // --fromFile
-  // --toDir
+  // Use case: alcdef2json --from C://alcdef2json/alcdef/ --to C://alcdef2json/json/alcdefs.json --flat
   if (argc > 1) {
     for (i = 1; i < argc; i ++) {
-      if (strcmp("--fromDir", argv[i]) == 0) {
-        // Save input directory path
+      if (strcmp("--from", argv[i]) == 0) {
+        // Save alcdef path
         if (i < (argc - 1)) {
-          strcpy(input.path, argv[i + 1]);
-          input.isFile = false;
+          strcpy(fromPath, argv[i + 1]);
         }
-      } else if (strcmp("--fromFile", argv[i]) == 0) {
-        // TODO TODO TODO
-        // Save input directory path
+      } else if (strcmp("--to", argv[i]) == 0) {
+        // Save json path
         if (i < (argc - 1)) {
-          strcpy(input.path, argv[i + 1]);
-          input.isFile = true;
-        }
-      } else if (strcmp("--toDir", argv[i]) == 0) {
-        // TODO TODO TODO
-        // Save output file path
-        if (i < (argc - 1)) {
-          strcpy(output.path, argv[i + 1]);
-          output.isFile = false;
-        }
-      } else if (strcmp("--toFile", argv[i]) == 0) {
-        // Save output file path
-        if (i < (argc - 1)) {
-          strcpy(output.path, argv[i + 1]);
-          output.isFile = true;
+          strcpy(toPath, argv[i + 1]);
         }
       } else if (strcmp("--flat", argv[i]) == 0) {
         // Save the output mode
@@ -166,10 +207,8 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-  
-  // Use case: ALCDEF_to_JSON --fromDir C://alcdef2json/alcdef --toFile C://alcdef2json/json/alcdefs.json
-  // Add support to output mode
-  AlcdefDirToJson(input.path, output.path, flatMode);
+
+  ConvertAllAlcdefToJson(fromPath, toPath, flatMode);
 
   // Output the time elapsed for the convertion
   printf("Time Elapsed: %lu seconds.\n", (unsigned long)time(NULL) - startTime);

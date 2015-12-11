@@ -149,7 +149,8 @@ int PrintDataField (FILE *output, const AlcdefField *field, const char *delimite
   return data_number;
 }
 
-// Writes a single ALCDEF file from input to a JSON output
+// Writes a portion of an ALCDEF file from the input pointer till the file end
+// into a JSON file pointed by the output pointer
 bool AlcdefToJson (FILE *output, FILE *input, const bool flat_mode) {
   // The data fields are counted starting with 1, similarly
   // to the {X}-values of ALCDEF

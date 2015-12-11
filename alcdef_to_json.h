@@ -34,13 +34,6 @@
 // among all the often-used file systems
 #define MAX_PATH_LENGTH  4096
 
-// Declare the endpoint structure
-// For source and destinations points
-typedef struct Endpoint {
-  char path[MAX_PATH_LENGTH];
-  bool isFile;
-} Endpoint;
-
 // Enum describing field types for proper output
 typedef enum {
   kBooleanField,

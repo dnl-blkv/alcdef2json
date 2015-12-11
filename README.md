@@ -16,18 +16,16 @@ The main conversion points are as follows:
 Flags
 =====
 The program currently accepts the following flags:
-- --fromFile (upcoming) or --fromDir - **required**, with a single argument;
-  the argument defines the address of the input ALCDEF file or directory with 
-  such files, respectively
-- --toFile or --toDir (upcoming) - **required**, with a single argument;
-  the argument defines the address of the output JSON file or directory for
-  such files in case of dir-to-dir conversion; the output file(s) is/are 
-  created automatically if not exist
+- --from - **required**, with a single argument; the argument defines the 
+  address of the input ALCDEF file, or directory with such files
+- --to - **required**, with a single argument; the argument defines the address
+  of the output JSON file, or directory for such files; the output file(s) 
+  is/are created automatically if not exist
 - --flat - **optional**, with no arguments; defines the flat operation mode 
-(flat or nested); default choice is nested
+  (the choices are *flat* and *nested*); default choice is nested
 
 Example use case
 ========
 ```
-alcdef2json --fromDir C://alcdef/ --toFile C://json/alcdefs.json --flat
+alcdef2json --from C://alcdef --to C://json/alcdefs.json --flat
 ```
