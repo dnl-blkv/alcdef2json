@@ -19,38 +19,29 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-#ifndef ALCDEF2JSON_H_
-#define ALCDEF2JSON_H_
+#ifndef WIN32_ALCDEF_TO_JSON_CONVERTER_H_
+#define WIN32_ALCDEF_TO_JSON_CONVERTER_H_
 
-#include <stdbool.h>
+#include <windows.h>
 
-#include "alcdef.h"
+#define MAX_PATH_LENGTH MAX_PATH
 
-// The line length here is three times longer than ALCDEF line
-// because escaping required for JSON could potentially increase
-// its length three-fold
-#define MAX_LINE_LENGTH  3 * MAX_ALCDEF_LINE_LENGTH
+typedef enum PathType {
+  kDirectoryPath,
+  kFilePath,
+  kOtherPath,
+  kWrongPath
+} PathType;
 
-// Enum describing field types for proper output
-typedef enum {
-  kBooleanField,
-  kStringField,
-  kNumberField
-} FieldType;
 
-// Converts a string to its equivalent in lower case
-char *stolower (char*);
+PathType GetPathType (const char*);
 
-// Escapes a string to make it compatible with JSON and MongoDB(!)
-int JsonEscapeString (char*);
+bool AlcdefFileToJsonFile (const char*, const char*, const bool);
 
-// Output a single ALCDEF field
-int PrintMetadataField (FILE*, const AlcdefField*, const FieldType);
+bool AlcdefDirToJsonFile (const char*, const char*, const bool);
 
-// Output a single ALCDEF lightcurve data field
-int PrintDataField (FILE*, const AlcdefField*, const char*, const int);
+bool AlcdefDirToJsonDir (const char*, const char*, const bool);
 
-// Prints a single ALCDEF file to a given JSON file
-bool AlcdefToJson (FILE*, FILE*, const bool);
+bool ConvertAlcdefToJson (const char*, const char*, const bool);
 
 #endif
