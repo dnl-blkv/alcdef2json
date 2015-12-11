@@ -2,4 +2,5 @@
 *.project
 *.txt
 Debug/
+Release/
 Data/

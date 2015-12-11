@@ -166,7 +166,7 @@ bool AlcdefToJson (FILE *output, FILE *input, const bool flat_mode) {
   field.code = kWrongField;
   
   // Pointer to the ALCDEF data delimiter (either \t or | in ALCDEF 2.0)
-  char *delimiter;
+  char *delimiter = "\t";
 
   size_t line_length;
 
