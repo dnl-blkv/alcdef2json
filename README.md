@@ -5,24 +5,28 @@ ALCDEF 2.0 format to more popular and generic JSON data interchange format.
 - JSON format: http://json.org/
 
 The main conversion points are as follows:
-- All JSON keys are in lower case.
+- All JSON keys are similar to ALCDEF field names, but in lower case.
 - Boolean strings from ALCDEF are represented as booleans in JSON.
-- String values from ALCDEF are escaped in JSON; commas are replaced with dots.
-- Doubles including the Julian Date are represented as doubles.
-- In the flat mode, data entries are suffixed with their index numbers.
-- In the nested mode, data entries are put into arrays, each element of such 
-  arrays being an object with subfields of data represented as key-value pairs.
-  Consider the lightcurve data block from the previous list item converted in 
-  the nested mode:
+- String values from ALCDEF are partially escaped in JSON to comply with 
+  MongoDB export requirements: MongoDB compatibility was a requirement in
+  development of the very first ALCDEF to JSON converter version. Commas are
+  replaced with dots.
+- Double strings from ALCDEF including the Julian Date are represented as 
+  doubles in JSON.
+- There are two modes of data blocks conversion available: the flat mode and
+  the nested mode. The difference between the two is described in the following
+  section.
   
 Flat Mode vs. Nested Mode
 =========================
+The converter allows for conversion in one of the two modes: flat or nested.
+The difference between the two is as follows:
 
-The converter allows for conversion in the two modes: flat and nested, as 
-described in the list above. Below is a brief comparison of the examples
-of usage of the two.
+- In the flat mode, data entries are suffixed with their index numbers.
+- In the nested mode, data entries are put into arrays, each element of such 
+  arrays being an object with subfields of data represented as key-value pairs.
 
-Consider a lightcurve data block:
+Consider, for example, a lightcurve data block:
 
 ```
 DATA=2455817.735937|+7.328|+0.004|2.224
@@ -31,41 +35,38 @@ DATA=2455817.736529|+7.317|+0.004|2.214
 ENDDATA
 ```
 
-The same data block after the flat-mode conversion to JSON is as follows:
+After the nested-mode conversion, the block looks as follows:
 
 ```
-{
-  ...,
-  "jd1":2455817.735937,
-  "mag1":+7.328,
-  "magerr1":+0.004,
-  "airmass1":2.224,
-  "jd2":2455817.736235,
-  "mag2":+7.317,
-  "magerr2":+0.004,
-  "airmass2":2.219,
-  "jd3":2455817.736529,
-  "mag3":+7.317,
-  "magerr3":+0.004,
-  "airmass3":2.214,
-  ...
-}
-```
-
-The same data block after the nested-mode conversion, on the other hand,
-looks as follows:
-
-```
-{
-  ...,
-  "data":[
+"data":[
   {"jd":2455817.735937,"mag":+7.328,"magerr":+0.004,"airmass":2.224},
   {"jd":2455817.736235,"mag":+7.317,"magerr":+0.004,"airmass":2.219},
   {"jd":2455817.736529,"mag":+7.317,"magerr":+0.004,"airmass":2.214}
-  ],
-  ...
-}
+]
 ```  
+
+The same block after the flat-mode conversion is, on the other hand, as 
+follows:
+
+```
+"jd1":2455817.735937,
+"mag1":+7.328,
+"magerr1":+0.004,
+"airmass1":2.224,
+"jd2":2455817.736235,
+"mag2":+7.317,
+"magerr2":+0.004,
+"airmass2":2.219,
+"jd3":2455817.736529,
+"mag3":+7.317,
+"magerr3":+0.004,
+"airmass3":2.214
+```
+
+The nested mode is significantly closer in terms of structure to the original
+ALCDEF way of data storage than the flat mode. Moreover, the reason behind the 
+flat mode introduction has sank into Lethe, but the mode is preserved, since 
+it was already implemented yet its usefulness has not been yet disproven.
 
 Flags
 =====
@@ -78,7 +79,7 @@ The program currently accepts the following flags:
 - --flat - **optional**, with no arguments; defines the flat operation mode 
   (the choices are *flat* and *nested*); default choice is nested
 
-Example use cases
+Example Use Cases
 =================
 There are four unique use cases, each of them could optionally use the --flat 
 flag. The cases are as follows:
