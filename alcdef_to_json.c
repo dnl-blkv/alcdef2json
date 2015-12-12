@@ -48,7 +48,7 @@ int JsonEscapeString (char *str)
   for (i = 0; i < strlen(str); ++i) {
     if (str[i] == '"') {
       sprintf(buffer + i + n, "\\%c", str[i]);
-      n ++;
+      ++n;
     } else if (str[i] == ',') {
       // TODO(dnl-blkv@gmail.com): get rid of comma replacement; possibly,
       // change it to some kind of comma escaping.
