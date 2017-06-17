@@ -1,7 +1,7 @@
 The ALCDEF 2.0 to JSON Converter is a tool for conversion astronomic data in 
 ALCDEF 2.0 format to more popular and generic JSON data interchange format.
 
-The converter has been developed by myself (Daniil Belyakov) and reviewed with care by Aleksei Shkurin.
+The converter has been developed by Daniil Belyakov and reviewed with care by Aleksei Shkurin.
 
 - ALCDEF format: http://minorplanetcenter.net/light_curve2/light_curve.php
   - Github link to ALCDEF 2.0 documentation: [ALCDEF_Standard.pdf](https://github.com/dnl-blkv/alcdef2json/files/59978/ALCDEF_Standard.pdf)
